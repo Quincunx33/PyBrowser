@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-neutral-200 bg-neutral-950;
+  }
+}
+
+.terminal-glow {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+.code-textarea {
+  resize: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-800) transparent;
+}
