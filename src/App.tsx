@@ -2,9 +2,13 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Terminal as TerminalIcon, Cpu, Loader2, History, Zap, 
   Folder, Plus, Trash2, Upload, FileCode, FolderPlus,
-  Monitor
+  Monitor, X, Save, Code2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-python';
+import 'prismjs/themes/prism-tomorrow.css';
 
 // --- Types ---
 declare global {
@@ -26,10 +30,18 @@ interface FileNode {
   children?: FileNode[];
 }
 
+interface OpenFile {
+  path: string;
+  content: string;
+  name: string;
+  isDirty: boolean;
+}
+
 export default function App() {
   const [pyodide, setPyodide] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [activeFile, setActiveFile] = useState<OpenFile | null>(null);
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<TerminalLine[]>([
     { type: 'welcome', content: 'PyBrowser Terminal OS v1.0.0 (WASM-Core)', id: 'w1' },
@@ -132,6 +144,7 @@ export default function App() {
         } else {
           pyodide.FS.unlink(path);
         }
+        if (activeFile?.path === path) setActiveFile(null);
         refreshFiles();
         addHistory('system', `Deleted: ${path}`);
       } catch (err) {
@@ -157,6 +170,35 @@ export default function App() {
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+  };
+
+  const openFile = (file: FileNode) => {
+    if (file.isDir) return;
+    if (pyodide) {
+      try {
+        const content = pyodide.FS.readFile(file.path, { encoding: 'utf8' });
+        setActiveFile({
+          path: file.path,
+          name: file.name,
+          content,
+          isDirty: false
+        });
+      } catch (err) {
+        addHistory('error', `Failed to read file: ${err}`);
+      }
+    }
+  };
+
+  const saveFile = () => {
+    if (activeFile && pyodide) {
+      try {
+        pyodide.FS.writeFile(activeFile.path, activeFile.content);
+        setActiveFile(prev => prev ? { ...prev, isDirty: false } : null);
+        addHistory('system', `Saved: ${activeFile.name}`);
+      } catch (err) {
+        addHistory('error', `Failed to save file: ${err}`);
+      }
     }
   };
 
@@ -274,8 +316,11 @@ export default function App() {
           >
             <Folder className="w-5 h-5" />
           </button>
-          <button className="p-2 rounded-lg text-neutral-800 cursor-not-allowed">
-            <Monitor className="w-5 h-5" />
+          <button 
+            onClick={() => { if (activeFile) setActiveFile(null); }}
+            className={`p-2 rounded-lg transition-all ${activeFile ? 'text-blue-500 hover:bg-blue-500/10' : 'text-neutral-800'}`}
+          >
+            <Code2 className="w-5 h-5" />
           </button>
         </div>
 
@@ -319,7 +364,11 @@ export default function App() {
                     <div className="text-[10px] text-neutral-700 italic text-center py-4">FS_EMPTY</div>
                   )}
                   {files.map((file) => (
-                    <div key={file.path} className="group flex items-center justify-between hover:bg-emerald-500/5 rounded-md px-3 py-1.5 transition-colors">
+                    <div 
+                      key={file.path} 
+                      onClick={() => openFile(file)}
+                      className="group flex items-center justify-between hover:bg-emerald-500/5 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                    >
                       <div className="flex items-center gap-3 overflow-hidden cursor-default">
                         {file.isDir ? <Folder className="w-4 h-4 text-blue-500 shrink-0" /> : <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />}
                         <span className="text-xs text-neutral-400 truncate font-mono">{file.name}</span>
@@ -343,9 +392,60 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        {/* Code Editor Pane */}
+        <AnimatePresence>
+          {activeFile && (
+            <motion.aside
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              className="absolute lg:relative right-0 top-0 bottom-0 lg:left-0 w-full lg:flex-1 bg-neutral-900 border-r border-emerald-900/20 flex flex-col z-40"
+            >
+              <div className="p-4 border-b border-emerald-900/10 flex items-center justify-between bg-neutral-950">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className={`text-xs font-mono truncate ${activeFile.isDirty ? 'text-amber-500 italic' : 'text-neutral-400'}`}>
+                    {activeFile.name} {activeFile.isDirty && '*'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={saveFile}
+                    className="flex items-center gap-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded uppercase transition-colors"
+                  >
+                    <Save className="w-3 h-3" /> Save
+                  </button>
+                  <button 
+                    onClick={() => setActiveFile(null)}
+                    className="p-1 hover:bg-neutral-800 rounded text-neutral-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto bg-neutral-900 custom-scrollbar p-0">
+                <Editor
+                  value={activeFile.content}
+                  onValueChange={code => setActiveFile(prev => prev ? { ...prev, content: code, isDirty: true } : null)}
+                  highlight={code => Prism.highlight(code, Prism.languages.python, 'python')}
+                  padding={24}
+                  style={{
+                    fontFamily: '"JetBrains Mono", monospace',
+                    fontSize: 14,
+                    minHeight: '100%',
+                    backgroundColor: 'transparent'
+                  }}
+                  textareaClassName="outline-none"
+                  className="code-editor-prism text-emerald-50/80"
+                />
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
         {/* Main Terminal Area */}
         <div 
-          className="flex-1 overflow-y-auto space-y-1 scrollbar-hide p-6 pb-24 relative z-10"
+          className={`flex-1 overflow-y-auto space-y-1 scrollbar-hide p-6 pb-24 relative z-10 ${activeFile ? 'hidden lg:block' : ''}`}
           onClick={() => inputRef.current?.focus()}
         >
           <AnimatePresence initial={false}>
