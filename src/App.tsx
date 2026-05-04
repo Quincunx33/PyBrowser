@@ -266,8 +266,8 @@ export default function App() {
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Vertical Icon Bar */}
-        <div className="w-12 bg-neutral-950 border-r border-emerald-900/10 flex flex-col items-center py-4 gap-4 shrink-0 z-40">
+        {/* Vertical Icon Bar - Stays fixed to the left */}
+        <div className="w-12 bg-neutral-950 border-r border-emerald-900/10 flex flex-col items-center py-4 gap-4 shrink-0 z-50">
           <button 
             onClick={() => setShowSidebar(!showSidebar)}
             className={`p-2 rounded-lg transition-all ${showSidebar ? 'bg-emerald-500/10 text-emerald-500' : 'text-neutral-600 hover:text-neutral-400'}`}
@@ -279,46 +279,64 @@ export default function App() {
           </button>
         </div>
 
+        {/* Mobile Overlay (Backdrop) */}
+        <AnimatePresence>
+          {showSidebar && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSidebar(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Sliding File Explorer */}
         <AnimatePresence>
           {showSidebar && (
             <motion.aside 
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              className="bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden"
+              initial={{ width: 0, x: -280 }}
+              animate={{ width: 280, x: 0 }}
+              exit={{ width: 0, x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute lg:relative left-12 lg:left-0 top-0 bottom-0 bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden z-40 shadow-2xl lg:shadow-none"
             >
-              <div className="w-70 px-4 py-4 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
+              <div className="min-w-[280px] p-6 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-6">
                   <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
                     <History className="w-3 h-3 text-emerald-800" /> Virtual_Disk
                   </h3>
-                  <div className="flex items-center gap-1">
-                    <button onClick={createFile} className="p-1 hover:text-emerald-500 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
-                    <button onClick={createFolder} className="p-1 hover:text-emerald-500 transition-colors"><FolderPlus className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:text-emerald-500 transition-colors"><Upload className="w-3.5 h-3.5" /></button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={createFile} title="New File" className="p-1 hover:text-emerald-500 transition-colors"><Plus className="w-4 h-4" /></button>
+                    <button onClick={createFolder} title="New Folder" className="p-1 hover:text-emerald-500 transition-colors"><FolderPlus className="w-4 h-4" /></button>
+                    <button onClick={() => fileInputRef.current?.click()} title="Upload" className="p-1 hover:text-emerald-500 transition-colors"><Upload className="w-4 h-4" /></button>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-1">
+                <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
                   {files.length === 0 && !isLoading && (
                     <div className="text-[10px] text-neutral-700 italic text-center py-4">FS_EMPTY</div>
                   )}
                   {files.map((file) => (
-                    <div key={file.path} className="group flex items-center justify-between hover:bg-emerald-500/5 rounded px-2 py-1 transition-colors">
-                      <div className="flex items-center gap-2 overflow-hidden cursor-default">
-                        {file.isDir ? <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" /> : <FileCode className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                    <div key={file.path} className="group flex items-center justify-between hover:bg-emerald-500/5 rounded-md px-3 py-1.5 transition-colors">
+                      <div className="flex items-center gap-3 overflow-hidden cursor-default">
+                        {file.isDir ? <Folder className="w-4 h-4 text-blue-500 shrink-0" /> : <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />}
                         <span className="text-xs text-neutral-400 truncate font-mono">{file.name}</span>
                       </div>
-                      <button onClick={() => deletePath(file.path)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-500 transition-all">
-                        <Trash2 className="w-3 h-3" />
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); deletePath(file.path); }} 
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-500 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="p-2 mt-4 bg-black/40 border border-emerald-900/10 rounded text-[9px] text-neutral-600 font-mono space-y-1">
-                  <div className="flex justify-between uppercase"><span>Mount:</span><span className="text-emerald-900">/home/pyodide</span></div>
+                <div className="p-3 mt-4 bg-black/40 border border-emerald-900/10 rounded-lg text-[9px] text-neutral-600 font-mono flex flex-col gap-1">
+                  <div className="flex justify-between uppercase"><span>Path:</span><span className="text-emerald-900 truncate ml-2">/home/pyodide</span></div>
+                  <div className="flex justify-between uppercase"><span>Type:</span><span className="text-emerald-900">MEMFS</span></div>
                 </div>
               </div>
             </motion.aside>
@@ -326,7 +344,10 @@ export default function App() {
         </AnimatePresence>
 
         {/* Main Terminal Area */}
-        <div className="flex-1 overflow-y-auto space-y-1 scrollbar-hide p-6 pb-24 relative">
+        <div 
+          className="flex-1 overflow-y-auto space-y-1 scrollbar-hide p-6 pb-24 relative z-10"
+          onClick={() => inputRef.current?.focus()}
+        >
           <AnimatePresence initial={false}>
             {history.map((line) => (
               <motion.div
