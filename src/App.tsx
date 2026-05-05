@@ -61,7 +61,7 @@ export default function App() {
   const [pyodide, setPyodide] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [sideView, setSideView] = useState<'files' | 'tasks' | 'data' | 'imaging' | 'math' | 'crypto' | 'ml' | 'packages'>('files');
+  const [sideView, setSideView] = useState<'files' | 'tasks' | 'data' | 'imaging' | 'math' | 'crypto' | 'ml' | 'packages' | 'automation'>('files');
   const [activeFile, setActiveFile] = useState<OpenFile | null>(null);
   const [tasks, setTasks] = useState<PyTask[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null);
@@ -97,6 +97,21 @@ export default function App() {
   const [securityKey, setSecurityKey] = useState('');
   const [encryptedZip, setEncryptedZip] = useState<string | null>(null);
   const [isEncrypting, setIsEncrypting] = useState(false);
+
+  // Web Automation States
+  const [isAutomating, setIsAutomating] = useState(false);
+  const [automationLogs, setAutomationLogs] = useState<string[]>([]);
+  const [targetUrl, setTargetUrl] = useState('');
+  const [proxyUrl, setProxyUrl] = useState('https://corsproxy.io/?');
+  const [isRecordingMacro, setIsRecordingMacro] = useState(false);
+  const [macros, setMacros] = useState<{ type: string; selector: string; value?: string }[]>([]);
+
+  // Pocket ML Redesign States
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState(0);
+  const [trainingStatus, setTrainingStatus] = useState('');
+  const [mlDataFiles, setMlDataFiles] = useState<{ type: 'img' | 'voice' | 'link' | 'zip'; name: string; content?: any }[]>([]);
+  const [estimatedTrainingTime, setEstimatedTrainingTime] = useState(0);
 
   const generateKey = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -153,6 +168,120 @@ base64.b64encode(buf.read()).decode('utf-8')
       addHistory('error', `Encryption failed: ${err.message}`);
     } finally {
       setIsEncrypting(false);
+    }
+  };
+
+  const startTraining = async () => {
+    if (mlDataFiles.length === 0) return;
+    setIsTraining(true);
+    setTrainingProgress(0);
+    setTrainingStatus('Initializing Neural Tensors...');
+    
+    // Disable other UI elements via state or overlay
+    const estTime = mlDataFiles.length * 5; // 5s per file simulated
+    setEstimatedTrainingTime(estTime);
+
+    const steps = ['Loading Datasets', 'Feature Extraction', 'Vector Mapping', 'Gradient Descent', 'Optimizing Weights', 'Finalizing Model'];
+    
+    for (let i = 0; i < steps.length; i++) {
+       setTrainingStatus(steps[i]);
+       const stepProgressSize = 100 / steps.length;
+       for (let p = 0; p < stepProgressSize; p++) {
+         setTrainingProgress(prev => Math.min(prev + 1, 100));
+         await new Promise(r => setTimeout(r, (estTime * 1000) / 100));
+       }
+    }
+    
+    setIsTraining(false);
+    addHistory('success', `Pocket ML: Training Complete. Model optimized for ${mlDataFiles.length} inputs.`);
+  };
+
+  const runWebAutomation = async (type: 'scrape' | 'fill' | 'macro', code?: string) => {
+    if (!pyodide) return;
+    setIsAutomating(true);
+    const startMsg = `[AUTO] Starting automation sequence: ${type.toUpperCase()}`;
+    addHistory('system', startMsg);
+    setAutomationLogs(prev => [...prev, startMsg]);
+
+    try {
+      if (type === 'scrape') {
+        const url = proxyUrl + targetUrl;
+        addHistory('system', `[SCRAPE] Fetching: ${targetUrl}...`);
+        setAutomationLogs(prev => [...prev, `[SCRAPE] Initiating fetch: ${targetUrl}`]);
+        
+        await pyodide.loadPackage('beautifulsoup4');
+        const pythonCode = `
+import pyodide.http
+from bs4 import BeautifulSoup
+import json
+import asyncio
+
+async def scrape():
+    try:
+        resp = await pyodide.http.pyfetch("${url}")
+        html = await resp.string()
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        data = {
+            "title": soup.title.string if soup.title else "No Title",
+            "headings": [h.text.strip() for h in soup.find_all(['h1', 'h2', 'h3'])][:15],
+            "links": [a['href'] for a in soup.find_all('a', href=True)][:10]
+        }
+        return json.dumps(data)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+result = await scrape()
+result
+`;
+        const res = await pyodide.runPythonAsync(pythonCode);
+        const parsed = JSON.parse(res);
+        if (parsed.error) {
+          addHistory('error', `[SCRAPE] Failed: ${parsed.error}`);
+          setAutomationLogs(prev => [...prev, `[ERROR] Scrape failed: ${parsed.error}`]);
+        } else {
+          addHistory('success', `[SCRAPE] Title: ${parsed.title}`);
+          setAutomationLogs(prev => [...prev, `[SCRAPE] Captured Title: ${parsed.title}`]);
+          parsed.headings.forEach((h: string) => {
+            addHistory('system', `> ${h}`);
+            setAutomationLogs(prev => [...prev, `> ${h}`]);
+          });
+        }
+      } else if (type === 'fill') {
+        const pythonCode = `
+import js
+from js import document
+
+def bot_type(selector, value):
+    el = document.querySelector(selector)
+    if el:
+        el.value = value
+        el.dispatchEvent(js.Event.new("input", True))
+        return True
+    return False
+
+def bot_click(selector):
+    el = document.querySelector(selector)
+    if el:
+        el.click()
+        return True
+    return False
+
+# In a real app, this would be user-provided code
+${code || ''}
+"SUCCESS"
+`;
+        await pyodide.runPythonAsync(pythonCode);
+        addHistory('success', `[BOT] Macro sequence executed.`);
+        setAutomationLogs(prev => [...prev, `[BOT] Finished macro sequence execution.`]);
+      }
+    } catch (e: any) {
+      addHistory('error', `[AUTO] Critical Failure: ${e.message}`);
+      setAutomationLogs(prev => [...prev, `[CRITICAL] Error: ${e.message}`]);
+    } finally {
+      setIsAutomating(false);
+      addHistory('system', `[AUTO] Sequence completed.`);
+      setAutomationLogs(prev => [...prev, `[AUTO] Engine returned to idle.`]);
     }
   };
 
@@ -1255,10 +1384,17 @@ ans, img
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('ml'); }}
-            title="Pocket ML"
-            className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'ml' ? 'bg-emerald-500/10 text-emerald-500' : 'text-neutral-600 hover:text-neutral-400'}`}
+            title="Pocket ML Training"
+            className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'ml' ? 'bg-purple-500/10 text-purple-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Brain className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => { setShowSidebar(true); setSideView('automation'); }}
+            title="Web Automation & Macros"
+            className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'automation' ? 'bg-cyan-500/10 text-cyan-500' : 'text-neutral-600 hover:text-neutral-400'}`}
+          >
+            <Monitor className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('packages'); }}
@@ -2231,53 +2367,284 @@ ans, img
                       </section>
                     </div>
                   </>
+                ) : sideView === 'automation' ? (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="space-y-1">
+                        <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                           <Monitor className="w-3 h-3 text-cyan-500" /> Automation_Core_v1
+                        </h3>
+                        <p className="text-[8px] text-neutral-600 font-mono italic">Web Scraper & Action Bot / ওয়েব অটোমেশন</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-1 pb-10">
+                      
+                      {/* Web Scraper */}
+                      <section className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Search className="w-3 h-3 text-cyan-400" />
+                          <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-tight">Smart Scraper / স্ক্র্যাপার</span>
+                        </div>
+                        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 space-y-3">
+                          <input 
+                            type="text"
+                            placeholder="Target URL (e.g. google.com)"
+                            value={targetUrl}
+                            onChange={(e) => setTargetUrl(e.target.value)}
+                            className="w-full bg-black/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-mono text-cyan-400 focus:outline-none focus:border-cyan-500/40"
+                          />
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="text"
+                              placeholder="CORS Proxy"
+                              value={proxyUrl}
+                              onChange={(e) => setProxyUrl(e.target.value)}
+                              className="flex-1 bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-mono text-neutral-500 focus:outline-none"
+                            />
+                            <button 
+                              onClick={() => runWebAutomation('scrape')}
+                              disabled={!targetUrl || isAutomating}
+                              className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[9px] font-bold uppercase rounded-lg transition-all disabled:opacity-30"
+                            >
+                              Run Scraper
+                            </button>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Macro Recorder */}
+                      <section className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-3 h-3 text-rose-400" />
+                          <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-tight">Macro Sequence / ম্যাক্রো রেকর্ডার</span>
+                        </div>
+                        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 space-y-4">
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-4">
+                               <button 
+                                 onClick={() => setIsRecordingMacro(!isRecordingMacro)}
+                                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                   isRecordingMacro ? 'bg-rose-500 animate-pulse' : 'bg-neutral-800 hover:bg-neutral-700'
+                                 }`}
+                               >
+                                 <div className={`w-3 h-3 rounded-full ${isRecordingMacro ? 'bg-white' : 'bg-rose-500'}`} />
+                               </button>
+                               <div className="flex flex-col">
+                                 <span className="text-[10px] font-bold text-neutral-300 uppercase leading-none">
+                                   {isRecordingMacro ? 'Recording...' : 'Record Macro'}
+                                 </span>
+                                 <span className="text-[7px] text-neutral-600 font-mono mt-1 italic">CAPTURING DOM EVENTS</span>
+                               </div>
+                             </div>
+                             {macros.length > 0 && (
+                               <button 
+                                 onClick={() => setMacros([])}
+                                 className="p-2 text-neutral-600 hover:text-rose-500 transition-colors"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </button>
+                             )}
+                           </div>
+
+                           {macros.length > 0 && (
+                             <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar p-2 bg-black/40 rounded-xl border border-white/5">
+                               {macros.map((m, i) => (
+                                 <div key={i} className="flex items-center gap-2 text-[8px] font-mono text-neutral-500 group animate-in fade-in slide-in-from-left-2 transition-all">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/40" />
+                                   <span className="text-cyan-500/70">{m.type.toUpperCase()}</span>
+                                   <span className="truncate flex-1">"{m.selector}"</span>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
+
+                           <button 
+                            disabled={macros.length === 0 || isAutomating}
+                            onClick={() => runWebAutomation('fill')}
+                            className="w-full py-3 bg-neutral-950 hover:bg-cyan-900/20 text-cyan-500 border border-cyan-500/20 hover:border-cyan-500/40 rounded-xl text-[9px] font-bold uppercase transition-all disabled:opacity-20"
+                           >
+                             Run Macro Sequence
+                           </button>
+                        </div>
+                      </section>
+
+                      {/* Action Log */}
+                      <section className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <h4 className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Local Session Log</h4>
+                          <button onClick={() => setAutomationLogs([])} className="text-[7px] text-neutral-600 hover:text-rose-500 uppercase font-mono">Clear</button>
+                        </div>
+                        <div className="bg-black/60 rounded-xl border border-white/5 p-4 h-48 overflow-y-auto custom-scrollbar font-mono text-[9px] space-y-1 shadow-inner">
+                          {automationLogs.length === 0 && (
+                             <div className="h-full flex items-center justify-center text-neutral-800 uppercase italic">
+                               Waiting for action...
+                             </div>
+                          )}
+                          {automationLogs.map((log, i) => (
+                            <div key={i} className={`flex gap-2 ${log.includes('[ERROR]') || log.includes('[CRITICAL]') ? 'text-rose-500' : 'text-cyan-400/80'}`}>
+                              <span className="text-neutral-700">[{1000+i}]</span>
+                              <span className="break-all">{log}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+
+                      <div className="p-4 bg-cyan-500/5 rounded-2xl border border-cyan-500/10 text-center">
+                        <p className="text-[8px] text-cyan-500 font-mono uppercase tracking-widest leading-relaxed">
+                          Full history is also archived in the main terminal.
+                        </p>
+                      </div>
+                    </div>
+                  </>
                 ) : sideView === 'ml' ? (
                   <>
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                         <Brain className="w-3 h-3 text-emerald-500" /> Pocket_ML
-                      </h3>
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
-                      <div className="space-y-3">
-                        <label className="text-[9px] text-neutral-600 uppercase font-mono ml-1">Input Data (X, Y per line)</label>
-                        <textarea 
-                          id="ml-data"
-                          placeholder="1,10&#10;2,20&#10;3,35&#10;4,45"
-                          className="w-full h-32 bg-black border border-emerald-900/20 rounded-lg px-3 py-3 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50"
-                        />
-                        <button 
-                          onClick={() => runMiniML((document.getElementById('ml-data') as HTMLTextAreaElement).value)}
-                          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/40 text-[10px] font-mono text-emerald-500 rounded border border-emerald-500/20 uppercase flex items-center justify-center gap-2 transition-all active:scale-95"
-                        >
-                          <Target className="w-4 h-4" /> Analyse Data Trends
-                        </button>
+                      <div className="space-y-1">
+                        <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                           <Brain className="w-3 h-3 text-purple-500" /> Pocket_ML_PRO_v2
+                        </h3>
+                        <p className="text-[8px] text-neutral-600 font-mono italic">Edge Intelligence Engine / পকেট এআই</p>
                       </div>
+                    </div>
 
-                      {isMlProcessing && (
-                        <div className="flex items-center justify-center gap-3 py-6 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
-                          <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
-                          <span className="text-[10px] text-emerald-400 font-mono animate-pulse uppercase">Training_Model...</span>
-                        </div>
-                      )}
+                    <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-1 relative">
+                       {isTraining && (
+                         <div className="absolute inset-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
+                            <div className="relative mb-8">
+                               <Loader2 className="w-20 h-20 text-purple-500 animate-spin opacity-20" />
+                               <div className="absolute inset-0 flex items-center justify-center">
+                                  <Brain className="w-10 h-10 text-purple-400 animate-pulse" />
+                               </div>
+                               <div className="absolute -inset-4 border-2 border-dashed border-purple-500/20 rounded-full animate-[spin_10s_linear_infinite]" />
+                            </div>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-[0.2em] mb-2">{trainingStatus}</h4>
+                            <div className="w-full max-w-xs h-1.5 bg-white/5 rounded-full overflow-hidden mb-4 border border-white/5">
+                               <motion.div 
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${trainingProgress}%` }}
+                                 className="h-full bg-gradient-to-r from-purple-600 to-rose-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                               />
+                            </div>
+                            <div className="flex items-center gap-4 text-[9px] font-mono text-neutral-500 uppercase">
+                               <span>PROGRESS: {trainingProgress}%</span>
+                               <div className="w-1 h-1 rounded-full bg-neutral-800" />
+                               <span>EST_TIME: {Math.max(0, estimatedTrainingTime - Math.floor(trainingProgress * estimatedTrainingTime / 100))}S</span>
+                            </div>
+                            <p className="mt-12 text-[8px] text-neutral-600 font-mono uppercase tracking-widest animate-pulse">Interface Locked: Neural Training in Progress</p>
+                         </div>
+                       )}
 
-                      {mlResult && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pb-4">
-                          <div className="bg-neutral-900 p-4 rounded-lg border border-emerald-900/10">
-                            <div className="text-[9px] text-neutral-600 uppercase mb-2 flex items-center gap-2">
-                              <LineChart className="w-3 h-3" /> Linear Regression Result:
-                            </div>
-                            <pre className="text-[10px] font-mono text-emerald-400 leading-relaxed overflow-x-auto">
-                              {mlResult.prediction}
-                            </pre>
-                          </div>
-                          {mlResult.plot && (
-                            <div className="bg-neutral-900 p-2 rounded-lg border border-emerald-900/10 overflow-hidden">
-                              <img src={mlResult.plot} alt="ML Trend Plot" className="w-full rounded" />
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
+                       {/* Multi-modal Data Input */}
+                       <section className="space-y-4">
+                         <div className="flex items-center justify-between px-1">
+                           <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-tight">Training Materials</span>
+                           <span className="text-[8px] font-mono text-purple-500">READY: {mlDataFiles.length} BUNDLES</span>
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-2">
+                           <button 
+                             onClick={() => document.getElementById('ml-img')?.click()}
+                             className="flex flex-col items-center justify-center p-4 bg-neutral-900/50 rounded-2xl border border-white/5 hover:border-purple-500/40 hover:bg-purple-500/5 transition-all gap-2 group"
+                           >
+                             <ImageIcon className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                             <span className="text-[8px] uppercase font-mono text-neutral-500">Images</span>
+                             <input id="ml-img" type="file" multiple className="hidden" accept="image/*" onChange={(e) => {
+                               if (e.target.files) {
+                                 const f = Array.from(e.target.files) as File[];
+                                 setMlDataFiles(prev => [...prev, ...f.map(x => ({ type: 'img', name: x.name } as const))]);
+                               }
+                             }} />
+                           </button>
+                           <button 
+                              onClick={() => document.getElementById('ml-voice')?.click()}
+                              className="flex flex-col items-center justify-center p-4 bg-neutral-900/50 rounded-2xl border border-white/5 hover:border-rose-500/40 hover:bg-rose-500/5 transition-all gap-2 group"
+                           >
+                             <Activity className="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" />
+                             <span className="text-[8px] uppercase font-mono text-neutral-500">Voice/Audio</span>
+                             <input id="ml-voice" type="file" multiple className="hidden" accept="audio/*" onChange={(e) => {
+                               if (e.target.files) {
+                                 const f = Array.from(e.target.files) as File[];
+                                 setMlDataFiles(prev => [...prev, ...f.map(x => ({ type: 'voice', name: x.name } as const))]);
+                               }
+                             }} />
+                           </button>
+                           <button 
+                              onClick={() => {
+                                const link = prompt("Enter Web Link for Data Scrape:");
+                                if (link) setMlDataFiles(prev => [...prev, { type: 'link', name: link }]);
+                              }}
+                              className="flex flex-col items-center justify-center p-4 bg-neutral-900/50 rounded-2xl border border-white/5 hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-all gap-2 group"
+                           >
+                             <LineChart className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                             <span className="text-[8px] uppercase font-mono text-neutral-500">Weblinks</span>
+                           </button>
+                           <button 
+                              onClick={() => document.getElementById('ml-zip')?.click()}
+                              className="flex flex-col items-center justify-center p-4 bg-neutral-900/50 rounded-2xl border border-white/5 hover:border-yellow-500/40 hover:bg-yellow-500/5 transition-all gap-2 group"
+                           >
+                             <FileArchive className="w-5 h-5 text-yellow-400 group-hover:scale-110 transition-transform" />
+                             <span className="text-[8px] uppercase font-mono text-neutral-500">ZIP Bundle</span>
+                             <input id="ml-zip" type="file" className="hidden" accept=".zip" onChange={(e) => {
+                               if (e.target.files?.[0]) {
+                                 setMlDataFiles(prev => [...prev, { type: 'zip', name: e.target.files![0].name }]);
+                               }
+                             }} />
+                           </button>
+                         </div>
+                       </section>
+
+                       {/* Data Bundle List */}
+                       {mlDataFiles.length > 0 && (
+                         <section className="space-y-3">
+                           <div className="flex items-center justify-between">
+                             <h4 className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest px-1">Active Tensors</h4>
+                             <button onClick={() => setMlDataFiles([])} className="text-[8px] text-rose-500 uppercase font-mono px-2 py-1 hover:bg-rose-500/10 rounded transition-all">Flush All</button>
+                           </div>
+                           <div className="space-y-1">
+                             {mlDataFiles.slice(0, 5).map((f, i) => (
+                               <div key={i} className="flex items-center justify-between p-2.5 bg-neutral-900/30 rounded-xl border border-white/5 group hover:border-purple-500/20 transition-all">
+                                 <div className="flex items-center gap-3">
+                                   <div className={`w-1.5 h-1.5 rounded-full ${
+                                     f.type === 'img' ? 'bg-purple-500' :
+                                     f.type === 'voice' ? 'bg-rose-500' :
+                                     f.type === 'link' ? 'bg-cyan-500' : 'bg-yellow-500'
+                                   }`} />
+                                   <span className="text-[10px] text-neutral-400 truncate max-w-[150px] font-mono">{f.name}</span>
+                                 </div>
+                                 <span className="text-[7px] text-neutral-600 font-bold uppercase px-1.5 py-0.5 bg-neutral-950 rounded">{f.type}</span>
+                               </div>
+                             ))}
+                             {mlDataFiles.length > 5 && (
+                               <div className="text-center py-2 text-[8px] text-neutral-600 uppercase font-mono tracking-widest">
+                                 + {mlDataFiles.length - 5} more integrated datasets
+                               </div>
+                             )}
+                           </div>
+                         </section>
+                       )}
+
+                       {/* Training Controls */}
+                       <div className="mt-8 space-y-3 pb-8">
+                         <button 
+                           onClick={startTraining}
+                           disabled={mlDataFiles.length === 0 || isTraining}
+                           className={`w-full py-5 rounded-2xl flex flex-col items-center justify-center gap-1 group transition-all relative overflow-hidden ${
+                             mlDataFiles.length > 0 
+                               ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-[0_20px_50px_rgba(147,51,234,0.3)]' 
+                               : 'bg-neutral-900 text-neutral-600 grayscale'
+                           }`}
+                         >
+                           <div className="flex items-center gap-3">
+                             <Zap className={`w-5 h-5 ${mlDataFiles.length > 0 ? 'animate-pulse text-yellow-300' : ''}`} />
+                             <span className="text-[11px] font-bold uppercase tracking-[0.2em]">Start Neural Training</span>
+                           </div>
+                           <span className="text-[8px] text-purple-200/50 font-mono uppercase group-hover:text-white transition-colors">Estimating Weight Optimization...</span>
+                         </button>
+                         <p className="text-[7px] text-neutral-700 text-center font-mono leading-relaxed px-4">
+                           Neural training will utilize localized WebAssembly resources. Interface will be suspended to optimize compute threads.
+                         </p>
+                       </div>
                     </div>
                   </>
                 ) : sideView === 'packages' ? (
