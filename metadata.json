@@ -1,6 +1,6 @@
 {
-  "name": "PyBrowser: Python Playground",
-  "description": "A browser-based Python execution environment powered by Pyodide and WebAssembly.",
+  "name": "PyBrowser: Data Insight Lab",
+  "description": "A high-performance browser-based Python environment specializing in Data Science. Features automated Pandas analysis with Drag & Drop, descriptive statistics, and missing value detection powered by Pyodide.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

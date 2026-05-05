@@ -47,6 +47,16 @@ interface PyTask {
   startTime: number;
 }
 
+interface AnalysisData {
+  head: string;
+  columns: string[];
+  dtypes: string;
+  description: string;
+  nullValues: string;
+  plot: string | null;
+  fileName: string;
+}
+
 export default function App() {
   const [pyodide, setPyodide] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,8 +64,15 @@ export default function App() {
   const [sideView, setSideView] = useState<'files' | 'tasks' | 'data' | 'imaging' | 'math' | 'crypto' | 'ml' | 'packages'>('files');
   const [activeFile, setActiveFile] = useState<OpenFile | null>(null);
   const [tasks, setTasks] = useState<PyTask[]>([]);
-  const [analysisResult, setAnalysisResult] = useState<{ summary: string; plot: string | null } | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isDraggingData, setIsDraggingData] = useState(false);
+  
+  // Advanced Charting States
+  const [chartX, setChartX] = useState<string>('');
+  const [chartY, setChartY] = useState<string>('');
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'pie' | 'hist'>('bar');
+  const [isCharting, setIsCharting] = useState(false);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [isProcessingImg, setIsProcessingImg] = useState(false);
   const [mathResult, setMathResult] = useState<{ answer: string; plot: string | null } | null>(null);
@@ -327,8 +344,7 @@ except:
     }
   };
 
-  const analyzeDataFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const analyzeDataFile = async (file: File) => {
     if (!file || !pyodide) return;
 
     setIsAnalysing(true);
@@ -340,56 +356,183 @@ except:
       
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
-      pyodide.FS.writeFile(`/tmp/${file.name}`, bytes);
+      
+      // Mandatory requirement: write to /home/pyodide/data.csv
+      const targetPath = '/home/pyodide/data.csv';
+      pyodide.FS.writeFile(targetPath, bytes);
 
       const pythonCode = `
 import pandas as pd
 import matplotlib.pyplot as plt
 import io
 import base64
-import os
+import json
 
-# Load data
-file_path = '/tmp/${file.name}'
-if file_path.endswith('.csv'):
+file_path = '${targetPath}'
+try:
     df = pd.read_csv(file_path)
-else:
-    # Basic Excel support (requires openpyxl)
-    df = pd.read_excel(file_path)
+except:
+    try:
+        df = pd.read_excel(file_path)
+    except:
+        # Fallback for weird csv formats
+        df = pd.read_csv(file_path, sep=None, engine='python')
 
-# Summary
-summary = df.describe().to_string()
+# Core Analysis
+head = df.head().to_html(classes='data-table')
+columns = df.columns.tolist()
+dtypes = df.dtypes.astype(str).to_string()
+description = df.describe().to_html(classes='data-table')
+null_values = df.isnull().sum().to_string()
 
-# Plot first numeric columns
+# Plot logic
 numeric_df = df.select_dtypes(include=['number'])
 img_str = None
-
 if not numeric_df.empty:
     plt.figure(figsize=(10, 6))
-    # Standardize plot style for dark theme
     plt.style.use('dark_background')
-    colors = ['#10b981', '#6366f1', '#f59e0b']
-    
-    cols_to_plot = numeric_df.columns[:3]
-    numeric_df[cols_to_plot].plot(kind='box', color=dict(boxes=colors[0], whiskers=colors[1], medians=colors[2], caps='white'))
-    plt.title(f'Distribution of {", ".join(cols_to_plot)}', color='#94a3b8', fontsize=10)
-    plt.grid(True, alpha=0.1)
-    
+    cols = numeric_df.columns[:3]
+    numeric_df[cols].plot(kind='box', color=dict(boxes='#10b981', whiskers='#6366f1', medians='#f59e0b', caps='white'))
+    plt.title('Distribution Analysis', color='#94a3b8')
     buf = io.BytesIO()
     plt.savefig(buf, format='png', transparent=True, dpi=120)
-    buf.seek(0)
     img_str = base64.b64encode(buf.read()).decode('utf-8')
     plt.close()
 
-summary, img_str
+json.dumps({
+    "head": head,
+    "columns": columns,
+    "dtypes": dtypes,
+    "description": description,
+    "nullValues": null_values,
+    "plot": img_str
+})
 `;
-      const [summary, img_str] = await pyodide.runPythonAsync(pythonCode);
-      setAnalysisResult({ summary, plot: img_str ? `data:image/png;base64,${img_str}` : null });
+      const finalResultJson = await pyodide.runPythonAsync(pythonCode);
+      const data = JSON.parse(finalResultJson);
+
+      setAnalysisResult({ 
+        ...data, 
+        plot: data.plot ? `data:image/png;base64,${data.plot}` : null,
+        fileName: file.name
+      });
+      // Set defaults for charting
+      if (data.columns.length > 0) {
+        setChartX(data.columns[0]);
+        setChartY(data.columns.length > 1 ? data.columns[1] : data.columns[0]);
+      }
       addHistory('system', `Analysis complete for ${file.name}`);
+      refreshFiles();
     } catch (err: any) {
       addHistory('error', `Analysis failed: ${err.message}`);
     } finally {
       setIsAnalysing(false);
+    }
+  };
+
+  const handleDataDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingData(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      analyzeDataFile(file);
+    }
+  };
+
+  const generateAdvancedChart = async () => {
+    if (!analysisResult || !pyodide) return;
+    setIsCharting(true);
+    try {
+      const pythonCode = `
+import pandas as pd
+import matplotlib.pyplot as plt
+import io
+import base64
+
+df = pd.read_csv('/home/pyodide/data.csv')
+x_col = "${chartX}"
+y_col = "${chartY}"
+ctype = "${chartType}"
+
+plt.figure(figsize=(10, 6))
+plt.style.use('dark_background')
+
+if ctype == 'line':
+    df.sort_values(by=x_col).plot(x=x_col, y=y_col, kind='line', marker='o', color='#6366f1')
+elif ctype == 'bar':
+    df.head(15).plot(x=x_col, y=y_col, kind='bar', color='#10b981')
+elif ctype == 'pie':
+    df.groupby(x_col)[y_col].sum().head(8).plot(kind='pie', autopct='%1.1f%%', colormap='viridis')
+elif ctype == 'hist':
+    df[y_col].plot(kind='hist', bins=20, color='#f59e0b', alpha=0.7)
+    plt.xlabel(y_col)
+
+plt.title(f"{ctype.upper()} Chart: {y_col} vs {x_col}", color='#94a3b8')
+plt.grid(True, alpha=0.1)
+plt.tight_layout()
+
+buf = io.BytesIO()
+plt.savefig(buf, format='png', transparent=True, dpi=120)
+buf.seek(0)
+base64.b64encode(buf.read()).decode('utf-8')
+`;
+      const img_str = await pyodide.runPythonAsync(pythonCode);
+      setAnalysisResult(prev => prev ? { ...prev, plot: `data:image/png;base64,${img_str}` } : null);
+      addHistory('info', `Generated ${chartType} chart for ${chartY} by ${chartX}`);
+    } catch (err: any) {
+      addHistory('error', `Chart generation failed: ${err.message}`);
+    } finally {
+      setIsCharting(false);
+    }
+  };
+
+  const exportData = async (format: 'csv' | 'xlsx') => {
+    if (!pyodide) return;
+    try {
+      addHistory('system', `Exporting data as ${format.toUpperCase()}...`);
+      const pythonCode = `
+import pandas as pd
+df = pd.read_csv('/home/pyodide/data.csv')
+if "${format}" == "csv":
+    res = df.to_csv(index=False)
+    type_out = "text/csv"
+else:
+    # Basic csv to excel conversion
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    res = base64.b64encode(output.getvalue()).decode('utf-8')
+    type_out = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+[res, type_out]
+`;
+      const [res, mime] = await pyodide.runPythonAsync(pythonCode);
+      
+      let blob;
+      if (format === 'csv') {
+        blob = new Blob([res], { type: mime });
+      } else {
+        const byteCharacters = atob(res);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: mime });
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `exported_data.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      addHistory('success', `Data exported successfully as ${format.toUpperCase()}`);
+    } catch (err: any) {
+      addHistory('error', `Export failed: ${err.message}`);
     }
   };
 
@@ -1076,43 +1219,214 @@ ans, img
                       <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
                         <BarChart3 className="w-3 h-3 text-indigo-500" /> Data_Analyst
                       </h3>
+                      {analysisResult && (
+                        <button 
+                          onClick={() => setAnalysisResult(null)}
+                          className="text-[8px] text-neutral-600 hover:text-rose-500 uppercase font-mono transition-colors"
+                        >
+                          Clear_Session
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
-                      <div 
-                        className="border-2 border-dashed border-emerald-900/20 rounded-xl p-6 text-center hover:border-indigo-500/40 transition-colors cursor-pointer bg-black/20"
-                        onClick={() => document.getElementById('data-upload')?.click()}
-                      >
-                        <Upload className="w-8 h-8 text-neutral-700 mx-auto mb-3" />
-                        <p className="text-[10px] text-neutral-500 font-mono">DRAG & DROP CSV/EXCEL</p>
-                        <p className="text-[8px] text-neutral-700 mt-1 uppercase">OR CLICK TO BROWSE</p>
-                        <input id="data-upload" type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={analyzeDataFile} />
-                      </div>
-
-                      {isAnalysing && (
-                        <div className="flex items-center justify-center gap-3 py-6 bg-indigo-500/5 rounded-lg border border-indigo-500/10">
-                          <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                          <span className="text-[10px] text-indigo-400 font-mono animate-pulse uppercase">Processing_Engine...</span>
+                      {!analysisResult && (
+                        <div 
+                          className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer bg-black/20 ${
+                            isDraggingData ? 'border-indigo-500 bg-indigo-500/5' : 'border-emerald-900/20 hover:border-indigo-500/40'
+                          }`}
+                          onDragOver={(e) => { e.preventDefault(); setIsDraggingData(true); }}
+                          onDragLeave={() => setIsDraggingData(false)}
+                          onDrop={handleDataDrop}
+                          onClick={() => document.getElementById('data-upload')?.click()}
+                        >
+                          <Upload className={`w-10 h-10 mx-auto mb-3 transition-colors ${isDraggingData ? 'text-indigo-500' : 'text-neutral-700'}`} />
+                          <p className="text-xs text-neutral-400 font-mono font-bold uppercase">Drag & Drop Data File</p>
+                          <p className="text-[10px] text-neutral-600 mt-2 uppercase tracking-tighter">Supported: .CSV, .XLSX</p>
+                          <p className="text-[8px] text-neutral-700 mt-4 uppercase italic">Saved to: /home/pyodide/data.csv</p>
+                          <input id="data-upload" type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) analyzeDataFile(file);
+                          }} />
                         </div>
                       )}
 
-                      {analysisResult && (
+                      {isAnalysing && (
+                        <div className="flex flex-col items-center justify-center gap-4 py-12 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                          <div className="text-center">
+                            <span className="text-[10px] text-indigo-400 font-mono animate-pulse uppercase block">Parsing_Matrix...</span>
+                            <span className="text-[8px] text-indigo-700 uppercase mt-1">Pandas engine is warming up</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {analysisResult && !isAnalysing && (
                         <motion.div 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="space-y-4 pb-4"
+                          className="space-y-6 pb-8"
                         >
-                          <div className="bg-neutral-900 rounded-lg p-4 border border-emerald-900/10">
-                            <h4 className="text-[9px] font-bold text-neutral-500 uppercase mb-3 border-b border-emerald-900/5 pb-2">Statistical Summary</h4>
-                            <pre className="text-[9px] text-indigo-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
-                              {analysisResult.summary}
-                            </pre>
+                          {/* File Meta */}
+                          <div className="flex items-center gap-3 px-4 py-3 bg-neutral-900/50 rounded-lg border border-emerald-900/10">
+                            <Binary className="w-4 h-4 text-emerald-500" />
+                            <div>
+                                <h4 className="text-[10px] font-bold text-neutral-300 truncate">{analysisResult.fileName}</h4>
+                                <p className="text-[8px] text-neutral-600 uppercase">Status: Loaded_In_Virtual_FS</p>
+                            </div>
                           </div>
 
+                          {/* Charting & Controls Section */}
+                          <div className="space-y-4 bg-neutral-900/40 rounded-xl border border-indigo-500/10 p-5">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+                              <h4 className="text-[10px] font-bold text-neutral-400 uppercase flex items-center gap-2">
+                                <Activity className="w-3 h-3 text-indigo-500" /> Visualization_Engine
+                              </h4>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => exportData('csv')}
+                                  className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[8px] font-mono uppercase rounded border border-emerald-500/20 transition-all flex items-center gap-2"
+                                >
+                                  <Download className="w-3 h-3" /> Export_CSV
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[8px] text-neutral-500 uppercase font-mono ml-1">X-Axis Variable</label>
+                                <select 
+                                  value={chartX}
+                                  onChange={(e) => setChartX(e.target.value)}
+                                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-[10px] font-mono text-indigo-400 focus:outline-none focus:border-indigo-500/50"
+                                >
+                                  {analysisResult.columns.map(col => (
+                                    <option key={col} value={col}>{col}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[8px] text-neutral-500 uppercase font-mono ml-1">Y-Axis Variable</label>
+                                <select 
+                                  value={chartY}
+                                  onChange={(e) => setChartY(e.target.value)}
+                                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-[10px] font-mono text-indigo-400 focus:outline-none focus:border-indigo-500/50"
+                                >
+                                  {analysisResult.columns.map(col => (
+                                    <option key={col} value={col}>{col}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[8px] text-neutral-500 uppercase font-mono ml-1">Chart Type</label>
+                                <select 
+                                  value={chartType}
+                                  onChange={(e) => setChartType(e.target.value as any)}
+                                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-[10px] font-mono text-indigo-400 focus:outline-none focus:border-indigo-500/50"
+                                >
+                                  <option value="bar">Bar Chart</option>
+                                  <option value="line">Line Chart</option>
+                                  <option value="hist">Histogram</option>
+                                  <option value="pie">Pie Chart</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <button 
+                              onClick={generateAdvancedChart}
+                              disabled={isCharting}
+                              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-[10px] font-bold uppercase rounded-lg transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)] flex items-center justify-center gap-3 mt-4"
+                            >
+                              {isCharting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <span>Rendering_Graph...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <BarChart3 className="w-4 h-4" />
+                                  <span>Generate Dynamic Illustration</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Quick Summary Section */}
+                          <div className="space-y-3">
+                            <h4 className="text-[10px] font-bold text-neutral-500 uppercase flex items-center gap-2 px-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Quick_Summary
+                            </h4>
+                            <div className="bg-neutral-900 rounded-xl border border-emerald-900/10 overflow-hidden">
+                                <div className="p-4 bg-black/40 border-b border-white/5">
+                                    <p className="text-[9px] text-neutral-500 uppercase mb-2">Data Sample (First 5 Rows)</p>
+                                    <div 
+                                        className="analysis-table-container overflow-x-auto text-[10px]"
+                                        dangerouslySetInnerHTML={{ __html: analysisResult.head }}
+                                    />
+                                </div>
+                                <div className="p-4 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[9px] text-neutral-500 uppercase mb-2">Column Headers</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {analysisResult.columns.map(col => (
+                                                <span key={col} className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 text-[8px] rounded border border-indigo-500/20">{col}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-neutral-500 uppercase mb-2">Schema / Types</p>
+                                        <pre className="text-[9px] text-neutral-400 font-mono leading-tight bg-black/30 p-2 rounded">
+                                            {analysisResult.dtypes}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+                          </div>
+
+                          {/* Descriptive Statistics */}
+                          <div className="space-y-3">
+                            <h4 className="text-[10px] font-bold text-neutral-500 uppercase flex items-center gap-2 px-1">
+                                <LineChart className="w-3 h-3 text-indigo-500" /> Descriptive_Statistics
+                            </h4>
+                            <div className="bg-neutral-900 rounded-xl border border-emerald-900/10 p-4">
+                                <div 
+                                    className="analysis-table-container overflow-x-auto text-[10px]"
+                                    dangerouslySetInnerHTML={{ __html: analysisResult.description }}
+                                />
+                            </div>
+                          </div>
+
+                          {/* Missing Values */}
+                          <div className="space-y-3">
+                            <h4 className="text-[10px] font-bold text-neutral-500 uppercase flex items-center gap-2 px-1">
+                                <Search className="w-3 h-3 text-amber-500" /> Integrity_Report
+                            </h4>
+                            <div className="bg-amber-500/5 rounded-xl border border-amber-500/10 p-4">
+                                <p className="text-[9px] text-neutral-500 uppercase mb-2">Null Value Detection</p>
+                                <pre className="text-[10px] text-amber-200/70 font-mono leading-tight">
+                                    {analysisResult.nullValues}
+                                </pre>
+                                {analysisResult.nullValues.includes(' 0') ? (
+                                    <div className="mt-3 flex items-center gap-2 text-[8px] text-emerald-500/60 uppercase">
+                                        <CheckCircle2 className="w-3 h-3" /> Data is clean: No missing entries found.
+                                    </div>
+                                ) : (
+                                    <div className="mt-3 flex items-center gap-2 text-[8px] text-amber-500/60 uppercase">
+                                        <Activity className="w-3 h-3 animate-pulse" /> Data contains missing values.
+                                    </div>
+                                )}
+                            </div>
+                          </div>
+
+                          {/* Plot */}
                           {analysisResult.plot && (
-                            <div className="bg-neutral-900 rounded-lg p-2 border border-emerald-900/10 overflow-hidden">
-                              <h4 className="text-[9px] font-bold text-neutral-500 uppercase mb-2 ml-2">Visual Insights</h4>
-                              <img src={analysisResult.plot} alt="Analysis Plot" className="w-full rounded-md opacity-90 brightness-110" />
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-bold text-neutral-500 uppercase flex items-center gap-2 px-1">
+                                    <BarChart3 className="w-3 h-3 text-rose-500" /> Visual_Distribution
+                                </h4>
+                                <div className="bg-neutral-900 rounded-xl border border-emerald-900/10 p-2 overflow-hidden shadow-2xl">
+                                    <img src={analysisResult.plot} alt="Analysis Plot" className="w-full rounded-lg brightness-110" />
+                                </div>
                             </div>
                           )}
                         </motion.div>

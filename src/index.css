@@ -20,3 +20,30 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-neutral-800) transparent;
 }
+
+/* Data Analysis Table Styles */
+.analysis-table-container .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: inherit;
+  color: var(--color-neutral-300);
+}
+
+.analysis-table-container .data-table th,
+.analysis-table-container .data-table td {
+  padding: 0.5rem;
+  border: 1px solid var(--color-neutral-800);
+  text-align: left;
+}
+
+.analysis-table-container .data-table th {
+  background: var(--color-neutral-900);
+  color: var(--color-emerald-500);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.analysis-table-container .data-table tr:hover {
+  background: rgba(16, 185, 129, 0.05);
+}
