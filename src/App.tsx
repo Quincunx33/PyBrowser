@@ -138,7 +138,17 @@ export default function App() {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
 
-  const focusInput = () => inputRef.current?.focus();
+  useEffect(() => {
+    if (showSidebar) {
+      inputRef.current?.blur();
+    }
+  }, [showSidebar]);
+
+  const focusInput = () => {
+    if (!showSidebar && !activeFile) {
+      inputRef.current?.focus();
+    }
+  };
 
   // --- Persistence Helper ---
   const persistFS = useCallback(() => {
@@ -723,7 +733,6 @@ ans, img
   return (
     <div 
       className="min-h-screen bg-black font-mono text-emerald-500 overflow-hidden flex flex-col selection:bg-emerald-500/30 relative"
-      onClick={focusInput}
     >
       {/* OS Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-900/30 shrink-0 bg-neutral-950">
@@ -755,7 +764,10 @@ ans, img
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Vertical Icon Bar - Stays fixed to the left */}
-        <div className="w-12 bg-neutral-950 border-r border-emerald-900/10 flex flex-col items-center py-4 gap-4 shrink-0 z-50">
+        <div 
+          className="w-12 bg-neutral-950 border-r border-emerald-900/10 flex flex-col items-center py-4 gap-4 shrink-0 z-50"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button 
             onClick={() => { setShowSidebar(true); setSideView('files'); }}
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'files' ? 'bg-emerald-500/10 text-emerald-500' : 'text-neutral-600 hover:text-neutral-400'}`}
@@ -842,7 +854,8 @@ ans, img
               }}
               exit={{ width: 0, x: -320 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute left-12 top-0 bottom-0 bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden z-40 shadow-2xl"
+              className="absolute left-12 top-0 bottom-0 bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden z-40 shadow-2xl focus-within:ring-0"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className={`${sideView === 'files' || sideView === 'tasks' ? 'w-[320px]' : 'w-full'} p-6 h-full flex flex-col`}>
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-emerald-900/10">
@@ -1412,7 +1425,7 @@ ans, img
         {/* Main Terminal Area */}
         <div 
           className={`flex-1 overflow-y-auto space-y-1 scrollbar-hide p-6 pb-24 relative z-10 ${activeFile ? 'hidden lg:block' : ''}`}
-          onClick={() => inputRef.current?.focus()}
+          onClick={focusInput}
         >
           <AnimatePresence initial={false}>
             {history.map((line) => (
@@ -1440,7 +1453,6 @@ ans, img
               <input
                 ref={inputRef}
                 type="text"
-                autoFocus
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
