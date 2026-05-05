@@ -1682,17 +1682,17 @@ ans, img
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Vertical Icon Bar - Stays fixed to the left */}
+      <div className="flex flex-1 overflow-hidden relative flex-col md:flex-row">
+        {/* Vertical Icon Bar - Stays fixed to the left on desktop, bottom on mobile */}
         <div 
-          className="w-12 bg-neutral-950 border-r border-emerald-900/10 flex flex-col items-center py-4 gap-4 shrink-0 z-50"
+          className="w-full md:w-12 h-12 md:h-full bg-neutral-950 border-r border-emerald-900/10 flex flex-row md:flex-col items-center justify-around md:justify-start py-0 md:py-4 gap-2 md:gap-4 shrink-0 z-50 overflow-x-auto md:overflow-x-visible no-scrollbar"
           onClick={(e) => e.stopPropagation()}
         >
           <button 
             onClick={() => { setShowSidebar(true); setSideView('files'); }}
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'files' ? 'bg-emerald-500/10 text-emerald-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
-            <Folder className="w-5 h-5" />
+            <Folder className="w-5 h-5 md:w-5 md:h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('tasks'); }}
@@ -1702,49 +1702,42 @@ ans, img
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('data'); }}
-            title="Data Analyst"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'data' ? 'bg-indigo-500/10 text-indigo-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <BarChart3 className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('imaging'); }}
-            title="Image Lab"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'imaging' ? 'bg-rose-500/10 text-rose-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <ImageIcon className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('math'); }}
-            title="Scientific Math"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'math' ? 'bg-cyan-500/10 text-cyan-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Binary className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('crypto'); }}
-            title="Security Vault"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'crypto' ? 'bg-amber-500/10 text-amber-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Lock className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('ml'); }}
-            title="Pocket ML Training"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'ml' ? 'bg-purple-500/10 text-purple-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Brain className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('automation'); }}
-            title="Web Automation & Macros"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'automation' ? 'bg-cyan-500/10 text-cyan-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Monitor className="w-5 h-5" />
           </button>
           <button 
             onClick={() => { setShowSidebar(true); setSideView('packages'); }}
-            title="Package Manager"
             className={`p-2 rounded-lg transition-all ${showSidebar && sideView === 'packages' ? 'bg-blue-500/10 text-blue-500' : 'text-neutral-600 hover:text-neutral-400'}`}
           >
             <Package className="w-5 h-5" />
@@ -1756,6 +1749,7 @@ ans, img
             <Code2 className="w-5 h-5" />
           </button>
         </div>
+
 
         {/* Mobile Overlay (Backdrop) */}
         <AnimatePresence>
@@ -1776,12 +1770,13 @@ ans, img
             <motion.aside 
               initial={{ width: 0, x: -320 }}
               animate={{ 
-                width: sideView === 'files' || sideView === 'tasks' ? 320 : 'calc(100% - 48px)',
+                width: typeof window !== 'undefined' && window.innerWidth < 768 ? 'calc(100% - 12px)' : (sideView === 'files' || sideView === 'tasks' ? 320 : 'calc(100% - 48px)'),
                 x: 0 
               }}
-              exit={{ width: 0, x: -320 }}
+              exit={{ width: 0, x: -500 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute left-12 top-0 bottom-0 bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden z-40 shadow-2xl focus-within:ring-0"
+              className="absolute left-0 md:left-12 top-0 bottom-0 bg-neutral-950 border-r border-emerald-900/20 flex flex-col shrink-0 overflow-hidden z-40 shadow-2xl focus-within:ring-0"
+
               onClick={(e) => e.stopPropagation()}
             >
               <div className={`${sideView === 'files' || sideView === 'tasks' ? 'w-[320px]' : 'w-full'} p-6 h-full flex flex-col`}>
@@ -3337,7 +3332,7 @@ ans, img
                 onKeyDown={handleKeyDown}
                 spellCheck={false}
                 autoComplete="off"
-                className="flex-1 bg-transparent border-none outline-none text-emerald-400 font-mono text-lg p-0 m-0 caret-emerald-500"
+                className="flex-1 bg-transparent border-none outline-none text-emerald-400 font-mono text-base md:text-lg p-0 m-0 caret-emerald-500 min-w-0"
               />
             </div>
           )}
@@ -3347,15 +3342,14 @@ ans, img
         <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} multiple />
       </div>
 
-      {/* Bottom Status Bar */}
-      <div className="px-6 py-4 bg-neutral-950 border-t border-emerald-900/10 flex items-center justify-between text-[10px] text-neutral-600 uppercase tracking-widest shrink-0">
-        <div className="flex gap-6">
+      <div className="px-4 md:px-6 py-3 md:py-4 bg-neutral-950 border-t border-emerald-900/10 flex flex-col sm:flex-row items-center justify-between text-[8px] md:text-[10px] text-neutral-600 uppercase tracking-widest shrink-0 gap-2 md:gap-0">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           <span className="flex items-center gap-1.5"><History className="w-3 h-3"/> Sessions: {commandHistory.length}</span>
           <span className="flex items-center gap-1.5"><Cpu className="w-3 h-3"/> Core: Python 3.11</span>
           <span className="hidden md:inline">Mount: JS_WORKER_01</span>
         </div>
-        <div className="flex items-center gap-4 hidden sm:flex">
-          <span className="text-emerald-900/50">WASM_RUNTIME_CONNECTED</span>
+        <div className="flex items-center gap-4">
+          <span className="text-emerald-900/50 hidden xs:inline">WASM_RUNTIME_CONNECTED</span>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
       </div>
