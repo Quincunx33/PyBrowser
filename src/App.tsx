@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Terminal as TerminalIcon, Cpu, Loader2, History, Zap, 
   Folder, Plus, Trash2, Upload, FileCode, FolderPlus,
-  Monitor, X, Save, Code2, Activity, Square, BarChart3,
+  Monitor, X, Save, Code2, Activity, Square, BarChart3, CornerDownLeft,
   Image as ImageIcon, Binary, Lock, ShieldCheck, Download,
   RefreshCw, Scissors, Type, Brain, Target, LineChart,
   Package, Search, CheckCircle2, DownloadCloud
@@ -61,11 +61,72 @@ export default function App() {
   const [mathResult, setMathResult] = useState<{ answer: string; plot: string | null } | null>(null);
   const [isMathProcessing, setIsMathProcessing] = useState(false);
   const [mathInput, setMathInput] = useState('');
+  const [mathPreview, setMathPreview] = useState<string | null>(null);
+  const [showScientific, setShowScientific] = useState(false);
+  const [sciTab, setSciTab] = useState<'basic' | 'matrix' | 'stats' | 'units'>('basic');
+  const [mathHistory, setMathHistory] = useState<{ expression: string; result: string }[]>(() => {
+    const saved = localStorage.getItem('math_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [mathVariables, setMathVariables] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('math_variables');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('math_history', JSON.stringify(mathHistory));
+  }, [mathHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('math_variables', JSON.stringify(mathVariables));
+  }, [mathVariables]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mathInput && pyodide) {
+        // Quick preview calculation
+        const runPreview = async () => {
+          try {
+            const pythonCode = `
+import sympy
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+transformations = (standard_transformations + (implicit_multiplication_application,))
+try:
+    expr = parse_expr("""${mathInput}""", transformations=transformations)
+    simplified = sympy.simplify(expr)
+    if simplified.is_number:
+        res = float(simplified.evalf())
+        print(f"{res:g}" if abs(res) < 1e10 else f"{res:.4e}")
+    else:
+        print(str(simplified))
+except:
+    print("")
+`;
+            const result = await pyodide.runPythonAsync(pythonCode);
+            setMathPreview(result?.trim() || null);
+          } catch (e) {
+            setMathPreview(null);
+          }
+        };
+        runPreview();
+      } else {
+        setMathPreview(null);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [mathInput, pyodide]);
   const [cryptoResult, setCryptoResult] = useState<{ text: string; mode: 'enc' | 'dec' } | null>(null);
   const [mlResult, setMlResult] = useState<{ prediction: string; plot: string | null } | null>(null);
   const [isMlProcessing, setIsMlProcessing] = useState(false);
   const [installedPackages, setInstalledPackages] = useState<string[]>(['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'Pillow']);
   const [installingPackage, setInstallingPackage] = useState<string | null>(null);
+  const [pkgSearch, setPkgSearch] = useState('');
+
+  const commonPackages = [
+    'sympy', 'requests', 'networkx', 'beautifulsoup4', 
+    'bokeh', 'statsmodels', 'regex', 'pyyaml', 'seaborn',
+    'scikit-image', 'pytz', 'six', 'bitarray', 'pydantic'
+  ];
   const [interruptBuffer] = useState(() => {
     try {
       return typeof SharedArrayBuffer !== 'undefined' 
@@ -378,52 +439,98 @@ base64.b64encode(buf.read()).decode('utf-8')
     if (!pyodide || !expression) return;
     setIsMathProcessing(true);
     try {
-      await pyodide.loadPackage(['numpy', 'matplotlib']);
+      // Ensure we have sympy for symbolic math and others for plotting
+      await pyodide.loadPackage(['sympy', 'numpy', 'matplotlib']);
+      
+      const varsJson = JSON.stringify(mathVariables);
       const pythonCode = `
+import sympy
 import numpy as np
 import matplotlib.pyplot as plt
 import io
 import base64
+import json
 import math
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
 
-expr = """${expression}"""
+expr_str = """${expression}"""
+saved_vars = json.loads("""${varsJson}""")
 plot_request = ${plot ? 'True' : 'False'}
 img_str = None
-ans = "N/A"
-
-# Create a safe namespace with common math/numpy functions
-safe_dict = {
-    'np': np,
-    'math': math,
-    'sin': np.sin, 'cos': np.cos, 'tan': np.tan,
-    'log': np.log, 'log10': np.log10, 'exp': np.exp,
-    'sqrt': np.sqrt, 'pi': np.pi, 'e': np.e,
-    'abs': np.abs, 'pow': np.power, 'arcsin': np.arcsin,
-    'arccos': np.arccos, 'arctan': np.arctan
-}
+ans_text = "N/A"
+is_assignment = False
+var_name = None
 
 try:
-    ans = str(eval(expr, {"__builtins__": None}, safe_dict))
-except Exception as e:
-    ans = f"Error: {str(e)}"
+    # Handle variable assignment (e.g., 'a = 10')
+    if '=' in expr_str and not '==' in expr_str:
+        parts = expr_str.split('=')
+        var_name = parts[0].strip()
+        expr_str = parts[1].strip()
+        is_assignment = True
 
+    # Pre-process
+    transformations = (standard_transformations + (implicit_multiplication_application,))
+    
+    # Inject saved variables into sympy context
+    context = {v: sympy.sympify(val) for v, val in saved_vars.items()}
+    x, y, z = sympy.symbols('x y z')
+    
+    # Custom helpers for UI convenience
+    def SymMatrix(arr): return sympy.Matrix(arr)
+    
+    context.update({
+        'x': x, 'y': y, 'z': z,
+        'Matrix': sympy.Matrix,
+        'det': lambda m: m.det(),
+        'inv': lambda m: m.inv(),
+        'transpose': lambda m: m.T,
+        'mean': lambda arr: np.mean(arr),
+        'median': lambda arr: np.median(arr),
+        'std': lambda arr: np.std(arr),
+        'np': np,
+        'math': math,
+        'm_to_ft': lambda m: m * 3.28084,
+        'ft_to_m': lambda ft: ft / 3.28084,
+        'kg_to_lb': lambda kg: kg * 2.20462,
+        'lb_to_kg': lambda lb: lb / 2.20462,
+        'c_to_f': lambda c: (c * 9/5) + 32,
+        'f_to_c': lambda f: (f - 32) * 5/9
+    })
+    
+    parsed_expr = parse_expr(expr_str, transformations=transformations, local_dict=context)
+    simplified = sympy.simplify(parsed_expr)
+    
+    if is_assignment and var_name:
+        ans_text = f"Stored: {var_name} = {simplified}"
+    elif simplified.is_number:
+        res = float(simplified.evalf())
+        ans_text = f"{res:g}" if abs(res) < 1e10 else f"{res:.4e}"
+    else:
+        ans_text = str(simplified)
+
+except Exception as e:
+    ans_text = f"Math Error: {str(e)}"
+
+# Plotting logic
 if plot_request:
     try:
         plt.figure(figsize=(10, 6))
         plt.style.use('dark_background')
-        x = np.linspace(-10, 10, 1000)
-        # Attempt to plot y = f(x)
-        # Handle the case where x is used in the expression
-        plot_dict = safe_dict.copy()
-        plot_dict['x'] = x
-        y = eval(expr, {"__builtins__": None}, plot_dict)
         
-        # If y is a single value, convert to array for plotting
-        if isinstance(y, (int, float)):
-            y = np.full_like(x, y)
+        # Define x range
+        x_vals = np.linspace(-10, 10, 1000)
+        
+        # Convert sympy expression to numeric function for plotting
+        f = sympy.lambdify(x, simplified, modules=['numpy', 'math'])
+        y_vals = f(x_vals)
+        
+        # Handle constant expressions
+        if isinstance(y_vals, (int, float, np.float64)):
+            y_vals = np.full_like(x_vals, y_vals)
             
-        plt.plot(x, y, color='#06b6d4', linewidth=2)
-        plt.title(f"f(x) = {expr}", color='#94a3b8', fontsize=10)
+        plt.plot(x_vals, y_vals, color='#06b6d4', linewidth=2)
+        plt.title(f"f(x) = {simplified}", color='#94a3b8', fontsize=10)
         plt.axhline(0, color='white', linewidth=0.5, alpha=0.3)
         plt.axvline(0, color='white', linewidth=0.5, alpha=0.3)
         plt.grid(True, alpha=0.1)
@@ -434,14 +541,29 @@ if plot_request:
         img_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close()
     except Exception as e:
-        ans = f"Plot Error: {str(e)}"
+        ans_text = f"Plot Error: {str(e)}"
 
-ans, img_str
+# Return values for JS
+[ans_text, img_str, var_name if is_assignment and not ans_text.startswith('Math') else None, str(simplified) if is_assignment and not ans_text.startswith('Math') else None]
 `;
-      const [ans, img_str] = await pyodide.runPythonAsync(pythonCode);
-      setMathResult({ answer: ans, plot: img_str ? `data:image/png;base64,${img_str}` : null });
+      const [ans, img_str, newVarName, newVarVal] = await pyodide.runPythonAsync(pythonCode);
+      
+      if (newVarName && newVarVal) {
+        setMathVariables(prev => ({ ...prev, [newVarName]: newVarVal }));
+        addHistory('success', `Variable saved: ${newVarName} = ${newVarVal}`);
+      }
+
+      const newResult = { answer: ans, plot: img_str ? `data:image/png;base64,${img_str}` : null };
+      setMathResult(newResult);
+      
+      // Log to terminal
+      addHistory('info', `Math: ${expression} -> ${ans}`);
+      
+      if (!ans.startsWith('Math Error') && !ans.startsWith('Plot Error')) {
+        setMathHistory(prev => [{ expression: expression, result: ans }, ...prev].slice(0, 10));
+      }
     } catch (err: any) {
-      addHistory('error', `Math Error: ${err.message}`);
+      addHistory('error', `Runtime Error: ${err.message}`);
     } finally {
       setIsMathProcessing(false);
     }
@@ -473,6 +595,7 @@ res
 `;
       const result = await pyodide.runPythonAsync(pythonCode);
       setCryptoResult({ text: result, mode });
+      addHistory('success', `Crypto: ${mode.toUpperCase()} operation completed.`);
     } catch (err: any) {
       addHistory('error', `Crypto Error: ${err.message}`);
     }
@@ -536,6 +659,7 @@ ans, img
 `;
       const [prediction, plot] = await pyodide.runPythonAsync(pythonCode);
       setMlResult({ prediction, plot: plot ? `data:image/png;base64,${plot}` : null });
+      addHistory('info', `ML Inference Result: ${prediction.split('\n')[0]}`);
       addHistory('system', 'ML Trend Analysis complete.');
     } catch (err: any) {
       addHistory('error', `ML Error: ${err.message}`);
@@ -544,29 +668,61 @@ ans, img
     }
   };
 
+  const [pkgStatus, setPkgStatus] = useState<string | null>(null);
+
   const installPackage = async (pkgName: string) => {
-    if (!pyodide || !pkgName) return;
-    setInstallingPackage(pkgName);
-    addHistory('system', `Installing package: ${pkgName}...`);
+    if (!pkgName) return;
+    
+    if (!pyodide) {
+      setPkgStatus("Error: Runtime not ready. Please wait...");
+      setTimeout(() => setPkgStatus(null), 3000);
+      return;
+    }
+
+    const name = pkgName.toLowerCase().trim();
+    if (installedPackages.includes(name)) {
+      setPkgStatus(`${name} is already loaded.`);
+      setTimeout(() => setPkgStatus(null), 2000);
+      return;
+    }
+
+    setInstallingPackage(name);
+    setPkgStatus(`Starting installation of ${name}...`);
+    addHistory('system', `Installing ${name}...`);
+    
     try {
-      // Use micropip for broader compatibility if possible, or direct loadPackage
-      await pyodide.loadPackage(pkgName.toLowerCase());
-      setInstalledPackages(prev => Array.from(new Set([...prev, pkgName.toLowerCase()])));
-      addHistory('system', `Package ${pkgName} installed successfully.`);
-    } catch (err: any) {
-      addHistory('error', `Failed to install ${pkgName}: ${err.message}. Trying micropip...`);
+      // First, check if it's a built-in Pyodide package
+      setPkgStatus(`Loading ${name} from CDN...`);
       try {
+        await pyodide.loadPackage(name);
+      } catch (e) {
+        // Fallback to micropip for any other PyPI package
+        setPkgStatus(`Fetching ${name} via micropip...`);
         await pyodide.loadPackage('micropip');
         const micropip = pyodide.pyimport('micropip');
-        await micropip.install(pkgName.toLowerCase());
-        setInstalledPackages(prev => Array.from(new Set([...prev, pkgName.toLowerCase()])));
-        addHistory('system', `Package ${pkgName} installed successfully via micropip.`);
-      } catch (err2: any) {
-        addHistory('error', `Installation failed: ${err2.message}`);
+        await micropip.install(name);
       }
+      
+      setInstalledPackages(prev => [...new Set([...prev, name])]);
+      setPkgStatus(`Successfully installed ${name}`);
+      addHistory('info', `Package ${name} is now available.`);
+      setPkgSearch('');
+      setTimeout(() => setPkgStatus(null), 3000);
+    } catch (err: any) {
+      console.error('Install error:', err);
+      setPkgStatus(`Error: ${err.message || 'Installation failed'}`);
+      addHistory('error', `Could not install ${name}.`);
     } finally {
       setInstallingPackage(null);
     }
+  };
+
+  const removePackage = (pkgName: string) => {
+    const name = pkgName.toLowerCase().trim();
+    setInstalledPackages(prev => prev.filter(p => p !== name));
+    setPkgStatus(`Removed ${name} from tracking`);
+    addHistory('system', `${name} untracked.`);
+    setTimeout(() => setPkgStatus(null), 2000);
   };
 
   const openFile = (file: FileNode) => {
@@ -1025,131 +1181,324 @@ ans, img
                   <>
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                         <Binary className="w-3 h-3 text-cyan-500" /> Scientific_Math
+                         <Binary className="w-3 h-3 text-cyan-500" /> Advanced_OS_Calculator
                       </h3>
+                      <button 
+                        onClick={() => {
+                          setMathHistory([]);
+                          addHistory('system', 'Scientific calculation history cleared.');
+                        }}
+                        className="text-[8px] text-neutral-600 hover:text-rose-500 uppercase font-mono transition-colors"
+                      >
+                        Clear_History
+                      </button>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
-                      <div className="bg-black/40 border border-cyan-900/20 rounded-xl p-4 space-y-3">
-                        <div className="bg-black/60 rounded-lg p-3 border border-emerald-900/10 min-h-[60px] flex flex-col justify-end items-end overflow-hidden">
-                          <div className="text-[10px] text-neutral-600 font-mono self-start uppercase mb-1">Expression</div>
-                          <div className="text-lg font-mono text-cyan-400 break-all text-right leading-tight">
-                            {mathInput || '0'}
+                      <div className="bg-neutral-900/50 border border-cyan-900/20 rounded-xl p-4 space-y-3 backdrop-blur-sm">
+                        <div className="bg-black/60 rounded-lg p-3 border border-cyan-900/10 min-h-[100px] flex flex-col justify-between items-end overflow-hidden group relative">
+                          <div className="w-full flex justify-between items-center opacity-40 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[8px] text-cyan-400 font-mono uppercase tracking-tighter">I/O_Buffer</span>
+                            {isMathProcessing && <Activity className="w-3 h-3 text-cyan-500 animate-spin" />}
+                          </div>
+                          <div className="w-full space-y-1">
+                            <div className="text-xs font-mono text-neutral-500 text-right truncate opacity-60">
+                              {mathHistory[0]?.expression || '...'}
+                            </div>
+                            <div className="text-xl font-mono text-cyan-400 break-all text-right leading-tight">
+                              {mathInput || '0'}
+                            </div>
+                            {mathPreview && mathInput && (
+                              <div className="text-[10px] font-mono text-cyan-500/50 text-right italic">
+                                Preview: {mathPreview}
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {/* Row 1: Sci Functions */}
-                          {['sin', 'cos', 'tan', 'log'].map(fn => (
-                            <button 
-                              key={fn} 
-                              onClick={() => setMathInput(prev => prev + `${fn}(`)}
-                              className="py-1.5 bg-cyan-950/20 hover:bg-cyan-900/30 text-[9px] font-bold text-cyan-600 rounded border border-cyan-900/10 uppercase"
-                            >
-                              {fn}
-                            </button>
-                          ))}
-                          
-                          {/* Row 2: Sci Functions Continued */}
-                          {['sqrt', 'pi', 'exp', 'pow'].map(fn => (
-                            <button 
-                              key={fn} 
-                              onClick={() => setMathInput(prev => prev + (fn === 'pi' ? 'pi' : `${fn}(`))}
-                              className="py-1.5 bg-cyan-950/20 hover:bg-cyan-900/30 text-[9px] font-bold text-cyan-600 rounded border border-cyan-900/10 uppercase"
-                            >
-                              {fn}
-                            </button>
-                          ))}
-
-                          {/* Row 3: Numeric + Basic Ops */}
-                          {[7, 8, 9, '/'].map(val => (
-                            <button 
-                              key={val} 
-                              onClick={() => setMathInput(prev => prev + val)}
-                              className="py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[12px] font-mono text-neutral-400 rounded border border-emerald-900/10"
-                            >
-                              {val}
-                            </button>
-                          ))}
-
-                          {[4, 5, 6, '*'].map(val => (
-                            <button 
-                              key={val} 
-                              onClick={() => setMathInput(prev => prev + val)}
-                              className="py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[12px] font-mono text-neutral-400 rounded border border-emerald-900/10"
-                            >
-                              {val}
-                            </button>
-                          ))}
-
-                          {[1, 2, 3, '-'].map(val => (
-                            <button 
-                              key={val} 
-                              onClick={() => setMathInput(prev => prev + val)}
-                              className="py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[12px] font-mono text-neutral-400 rounded border border-emerald-900/10"
-                            >
-                              {val}
-                            </button>
-                          ))}
-
-                          {['(', 0, ')', '+'].map(val => (
-                            <button 
-                              key={val.toString()} 
-                              onClick={() => setMathInput(prev => prev + val)}
-                              className="py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[12px] font-mono text-neutral-400 rounded border border-emerald-900/10"
-                            >
-                              {val}
-                            </button>
-                          ))}
-
-                          {/* Last Row: Actions */}
-                          <button 
-                            onClick={() => setMathInput('')}
-                            className="py-2.5 bg-rose-950/20 hover:bg-rose-900/30 text-[9px] font-bold text-rose-600 rounded border border-rose-900/10 uppercase"
+                        {mathResult && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3"
                           >
-                            CLR
+                            <div className="text-[9px] text-cyan-500/60 uppercase font-mono mb-1">Result</div>
+                            <div className="text-sm font-mono text-cyan-100 leading-relaxed break-words">
+                              {mathResult.answer}
+                            </div>
+                            {mathResult.plot && (
+                              <div className="mt-3 overflow-hidden rounded-lg border border-cyan-900/30 bg-black/40">
+                                <img src={mathResult.plot} alt="Plot" className="w-full h-auto" />
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+
+                        {/* Controls */}
+                        <div className="flex flex-col gap-2">
+                          <button 
+                            onClick={() => setShowScientific(!showScientific)}
+                            className={`w-full py-2 rounded border transition-all text-[9px] font-bold uppercase ${
+                              showScientific 
+                                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400' 
+                                : 'bg-neutral-800 border-white/5 text-neutral-500'
+                            }`}
+                          >
+                            {showScientific ? 'Hide_Scientific_Tools' : 'Show_Scientific_Tools'}
                           </button>
+
+                          {showScientific && (
+                            <div className="flex gap-1 p-1 bg-black/40 rounded-lg border border-white/5">
+                              {(['basic', 'matrix', 'stats', 'units'] as const).map(tab => (
+                                <button
+                                  key={tab}
+                                  onClick={() => setSciTab(tab)}
+                                  className={`flex-1 py-1 rounded text-[7px] font-bold uppercase transition-all ${
+                                    sciTab === tab 
+                                      ? 'bg-cyan-500 text-black shadow-[0_0_10px_rgba(6,182,212,0.3)]' 
+                                      : 'text-neutral-500 hover:text-neutral-300'
+                                  }`}
+                                >
+                                  {tab}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Sci Keypad */}
+                        <AnimatePresence mode="wait">
+                          {showScientific && (
+                            <motion.div 
+                              key={sciTab}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 10 }}
+                              className="space-y-1.5"
+                            >
+                              {sciTab === 'basic' && (
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {['sin', 'cos', 'tan', 'log'].map(fn => (
+                                    <button 
+                                      key={fn} 
+                                      onClick={() => setMathInput(prev => prev + `${fn}(`)}
+                                      className="py-2 bg-neutral-900/50 hover:bg-cyan-500/10 text-[9px] font-bold text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all"
+                                    >
+                                      {fn}
+                                    </button>
+                                  ))}
+                                  {['sqrt', 'pi', 'e', 'abs'].map(fn => (
+                                    <button 
+                                      key={fn} 
+                                      onClick={() => setMathInput(prev => prev + (fn === 'pi' || fn === 'e' ? fn : `${fn}(`))}
+                                      className="py-2 bg-neutral-900/50 hover:bg-cyan-500/10 text-[9px] font-bold text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all"
+                                    >
+                                      {fn}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+
+                              {sciTab === 'matrix' && (
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <button onClick={() => setMathInput(prev => prev + "Matrix([[1,0],[0,1]])")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">New_Matrix</button>
+                                  <button onClick={() => setMathInput(prev => prev + "det(")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">Determinant</button>
+                                  <button onClick={() => setMathInput(prev => prev + "inv(")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">Inverse</button>
+                                  <button onClick={() => setMathInput(prev => prev + "transpose(")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">T_Transpose</button>
+                                  <button onClick={() => setMathInput(prev => prev + "Matrix([1,2,3])")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">Vector</button>
+                                  <button onClick={() => setMathInput(prev => prev + "eye(3)")} className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-cyan-600 rounded border border-cyan-900/10 uppercase transition-all">Identity</button>
+                                </div>
+                              )}
+
+                              {sciTab === 'stats' && (
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <button onClick={() => setMathInput(prev => prev + "mean([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Average/Mean</button>
+                                  <button onClick={() => setMathInput(prev => prev + "median([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Median</button>
+                                  <button onClick={() => setMathInput(prev => prev + "std([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Std_Dev</button>
+                                  <button onClick={() => setMathInput(prev => prev + "sum([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Summation</button>
+                                  <button onClick={() => setMathInput(prev => prev + "min([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Minimum</button>
+                                  <button onClick={() => setMathInput(prev => prev + "max([") } className="py-2 bg-neutral-800 hover:bg-cyan-500/10 text-[8px] font-mono text-emerald-600 rounded border border-emerald-900/10 uppercase transition-all">Maximum</button>
+                                </div>
+                              )}
+
+                              {sciTab === 'units' && (
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <button onClick={() => setMathInput(prev => prev + "m_to_ft(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">Meter ➜ Feet</button>
+                                  <button onClick={() => setMathInput(prev => prev + "ft_to_m(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">Feet ➜ Meter</button>
+                                  <button onClick={() => setMathInput(prev => prev + "kg_to_lb(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">KG ➜ LB</button>
+                                  <button onClick={() => setMathInput(prev => prev + "lb_to_kg(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">LB ➜ KG</button>
+                                  <button onClick={() => setMathInput(prev => prev + "c_to_f(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">°C ➜ °F</button>
+                                  <button onClick={() => setMathInput(prev => prev + "f_to_c(")} className="py-2 bg-neutral-800 hover:bg-orange-500/10 text-[8px] font-mono text-orange-500 rounded border border-orange-500/10 uppercase transition-all">°F ➜ °C</button>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {['**', '(', ')', '/'].map(val => (
+                            <button 
+                              key={val} 
+                              onClick={() => setMathInput(prev => prev + val)}
+                              className="py-2 bg-neutral-900/80 hover:bg-neutral-800 text-[11px] font-mono text-cyan-500/70 rounded border border-cyan-900/10"
+                            >
+                              {val === '**' ? 'x^y' : val}
+                            </button>
+                          ))}
+
+                          {[7, 8, 9, '*'].map(val => (
+                            <button 
+                              key={val} 
+                              onClick={() => setMathInput(prev => prev + val)}
+                              className="py-3 bg-neutral-900 hover:bg-neutral-800 text-[14px] font-mono text-neutral-300 rounded border border-white/5 shadow-inner"
+                            >
+                              {val}
+                            </button>
+                          ))}
+
+                          {[4, 5, 6, '-'].map(val => (
+                            <button 
+                              key={val} 
+                              onClick={() => setMathInput(prev => prev + val)}
+                              className="py-3 bg-neutral-900 hover:bg-neutral-800 text-[14px] font-mono text-neutral-300 rounded border border-white/5 shadow-inner"
+                            >
+                              {val}
+                            </button>
+                          ))}
+
+                          {[1, 2, 3, '+'].map(val => (
+                            <button 
+                              key={val} 
+                              onClick={() => setMathInput(prev => prev + val)}
+                              className="py-3 bg-neutral-900 hover:bg-neutral-800 text-[14px] font-mono text-neutral-300 rounded border border-white/5 shadow-inner"
+                            >
+                              {val}
+                            </button>
+                          ))}
+
                           <button 
                             onClick={() => setMathInput(prev => prev.slice(0, -1))}
-                            className="py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[9px] font-bold text-neutral-500 rounded border border-emerald-900/10 uppercase"
+                            className="py-3 bg-rose-950/20 hover:bg-rose-900/30 text-[10px] font-bold text-rose-600 rounded border border-rose-900/10 uppercase"
                           >
                             DEL
                           </button>
                           <button 
-                            onClick={() => solveMath(mathInput)}
-                            className="py-2.5 bg-cyan-600 hover:bg-cyan-500 text-[9px] font-bold text-white rounded shadow-lg shadow-cyan-900/20 uppercase"
+                            onClick={() => setMathInput(prev => prev + '0')}
+                            className="py-3 bg-neutral-900 hover:bg-neutral-800 text-[14px] font-mono text-neutral-300 rounded border border-white/5 shadow-inner"
                           >
-                            EXE
+                            0
                           </button>
                           <button 
-                            onClick={() => solveMath(mathInput, true)}
-                            className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-[9px] font-bold text-white rounded shadow-lg shadow-emerald-900/20 uppercase"
+                            onClick={() => setMathInput(prev => prev + '.')}
+                            className="py-3 bg-neutral-900 hover:bg-neutral-800 text-[14px] font-mono text-neutral-300 rounded border border-white/5 shadow-inner"
                           >
-                            Plot
+                            .
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (mathInput) solveMath(mathInput);
+                            }}
+                            disabled={isMathProcessing || !mathInput}
+                            className="py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-[14px] font-bold text-black rounded border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all"
+                          >
+                            =
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                           <button 
+                            onClick={() => setMathInput('')}
+                            className="py-2 bg-neutral-800 hover:bg-neutral-700 text-[9px] font-bold text-neutral-400 rounded border border-white/5 uppercase"
+                          >
+                            Reset_All
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (mathInput) solveMath(mathInput, true);
+                            }}
+                            className="py-2 bg-cyan-950/30 hover:bg-cyan-900/40 text-[9px] font-bold text-cyan-400 rounded border border-cyan-500/20 uppercase"
+                          >
+                            Plot_Variable_X
                           </button>
                         </div>
                       </div>
 
-                      {isMathProcessing && (
-                        <div className="flex items-center justify-center gap-3 py-4">
-                          <Loader2 className="w-4 h-4 text-cyan-500 animate-spin" />
-                          <span className="text-[10px] text-cyan-400 font-mono">COMPUTING...</span>
+                      {/* Variables Panel */}
+                      {Object.keys(mathVariables).length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          <h4 className="text-[9px] font-bold text-neutral-600 uppercase ml-1 flex items-center gap-2">
+                             <Lock className="w-3 h-3" /> Saved_Variables
+                          </h4>
+                          <div className="flex flex-wrap gap-2 p-3 bg-neutral-900/30 border border-white/5 rounded-lg">
+                            {Object.entries(mathVariables).map(([name, val]) => (
+                              <button 
+                                key={name}
+                                onClick={() => setMathInput(prev => prev + name)}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  const next = { ...mathVariables };
+                                  delete next[name];
+                                  setMathVariables(next);
+                                  addHistory('system', `Variable ${name} deleted.`);
+                                }}
+                                className="group relative flex items-center gap-2 px-2 py-1 bg-black/40 border border-cyan-900/10 rounded-md hover:border-cyan-500/30 transition-all"
+                                title="Right click to delete"
+                              >
+                                <span className="text-[9px] font-mono text-cyan-500">{name}</span>
+                                <span className="text-[9px] font-mono text-neutral-500">= {val}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
 
-                      {mathResult && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                          <div className="bg-neutral-900 p-4 rounded-lg border border-emerald-900/10">
-                            <div className="text-[9px] text-neutral-600 uppercase mb-1">Result:</div>
-                            <div className="text-xl font-mono text-cyan-500 break-all leading-tight">{mathResult.answer}</div>
+                      {/* History Panel */}
+                      {mathHistory.length > 0 && (
+                        <div className="space-y-2 mt-6">
+                          <h4 className="text-[9px] font-bold text-neutral-600 uppercase ml-1 flex items-center justify-between gap-2">
+                             <span className="flex items-center gap-2"><History className="w-3 h-3" /> Recent_Calculations</span>
+                             <button 
+                               onClick={() => {
+                                 setMathHistory([]);
+                                 addHistory('system', 'Calculation history purged.');
+                               }}
+                               className="text-[7px] text-neutral-700 hover:text-rose-500 transition-colors uppercase"
+                             >
+                               Purge_All
+                             </button>
+                          </h4>
+                          <div className="space-y-1.5">
+                            {mathHistory.map((item, idx) => (
+                              <div key={idx} className="group relative">
+                                <button 
+                                  onClick={() => setMathInput(item.expression)}
+                                  className="w-full flex items-center justify-between p-3 bg-neutral-900/30 border border-emerald-900/5 rounded-lg hover:border-cyan-500/30 transition-all text-left"
+                                >
+                                  <div className="flex flex-col gap-0.5 overflow-hidden pr-8">
+                                    <span className="text-[10px] font-mono text-neutral-500 group-hover:text-neutral-400 truncate">{item.expression}</span>
+                                    <span className="text-xs font-mono text-cyan-500/80 group-hover:text-cyan-400 truncate">{item.result}</span>
+                                  </div>
+                                  <CornerDownLeft className="w-3 h-3 text-neutral-800 group-hover:text-cyan-600 shrink-0" />
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMathHistory(prev => prev.filter((_, i) => i !== idx));
+                                  }}
+                                  className="absolute top-1/2 -translate-y-1/2 right-2 p-1.5 opacity-0 group-hover:opacity-100 bg-neutral-900 border border-white/5 rounded-md text-neutral-600 hover:text-rose-500 transition-all shadow-xl"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                          {mathResult.plot && (
-                            <div className="bg-neutral-900 p-2 rounded-lg border border-emerald-900/10 overflow-hidden">
-                              <h4 className="text-[9px] font-bold text-neutral-500 uppercase mb-2 ml-2">Graph Visualization</h4>
-                              <img src={mathResult.plot} alt="Plot" className="w-full rounded opacity-90 brightness-110" />
-                            </div>
-                          )}
-                        </motion.div>
+                        </div>
                       )}
+
+                      <div className="p-3 bg-cyan-900/5 border border-cyan-900/10 rounded-lg">
+                        <p className="text-[9px] text-neutral-600 leading-relaxed uppercase font-mono italic">
+                          Scientific mode: supports NumPy eval, basic plotting (use 'x' as variable), and complex arithmetic.
+                        </p>
+                      </div>
                     </div>
                   </>
                 ) : sideView === 'crypto' ? (
@@ -1264,20 +1613,36 @@ ans, img
                          <Package className="w-3 h-3 text-blue-500" /> Package_Manager
                       </h3>
                     </div>
-                    <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pb-10">
+                      {pkgStatus && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className={`p-3 rounded-lg border text-[10px] font-mono flex items-center gap-3 ${
+                            pkgStatus.startsWith('Error') 
+                              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+                              : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                          }`}
+                        >
+                          {pkgStatus.startsWith('Error') ? <X className="w-4 h-4" /> : <Activity className="w-4 h-4 animate-pulse" />}
+                          {pkgStatus}
+                        </motion.div>
+                      )}
+
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                         <input 
                           type="text" 
-                          id="pkg-search"
-                          placeholder="Search PyPI / NumPy / Rich..."
-                          className="w-full bg-black border border-emerald-900/20 rounded-lg pl-10 pr-4 py-2.5 text-xs font-mono text-blue-400 focus:outline-none focus:border-blue-500/50"
+                          value={pkgSearch}
+                          onChange={(e) => setPkgSearch(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              installPackage((e.target as HTMLInputElement).value);
-                              (e.target as HTMLInputElement).value = '';
+                            if (e.key === 'Enter' && pkgSearch) {
+                              installPackage(pkgSearch);
+                              setPkgSearch('');
                             }
                           }}
+                          placeholder="Search PyPI / NumPy / Type & Enter..."
+                          className="w-full bg-black border border-emerald-900/20 rounded-lg pl-10 pr-4 py-2.5 text-xs font-mono text-blue-400 focus:outline-none focus:border-blue-500/50"
                         />
                       </div>
 
@@ -1288,22 +1653,79 @@ ans, img
                         </div>
                       )}
 
-                      <div className="space-y-2">
-                        <h4 className="text-[9px] font-bold text-neutral-700 uppercase ml-1">Loaded Runtime Modules</h4>
-                        {installedPackages.map(pkg => (
-                          <div key={pkg} className="group flex items-center justify-between p-2.5 bg-neutral-900 border border-emerald-900/10 rounded-lg hover:border-blue-500/30 transition-all">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <h4 className="text-[9px] font-bold text-emerald-600 uppercase ml-1 flex items-center gap-2">
+                            <CheckCircle2 className="w-3 h-3" /> Active Modules
+                          </h4>
+                          {installedPackages
+                            .filter(p => !pkgSearch || p.toLowerCase().includes(pkgSearch.toLowerCase()))
+                            .map(pkg => (
+                            <div key={pkg} className="group flex items-center justify-between p-3 bg-neutral-900/50 border border-emerald-900/10 rounded-lg hover:border-emerald-500/20 transition-all">
                               <span className="text-xs font-mono text-neutral-300">{pkg}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[8px] font-mono text-emerald-500/60 uppercase border border-emerald-500/20 px-2 py-0.5 rounded">Loaded</span>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removePackage(pkg);
+                                  }}
+                                  className="p-1 hover:bg-rose-500/10 text-neutral-700 hover:text-rose-500 rounded transition-colors"
+                                  title="Unload"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800" />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+
+                        <div className="space-y-2">
+                          <h4 className="text-[9px] font-bold text-neutral-600 uppercase ml-1 flex items-center gap-2">
+                            <DownloadCloud className="w-3 h-3" /> Available in Registry
+                          </h4>
+                          {commonPackages
+                            .filter(p => !installedPackages.includes(p))
+                            .filter(p => !pkgSearch || p.toLowerCase().includes(pkgSearch.toLowerCase()))
+                            .map(pkg => (
+                            <button 
+                              key={pkg} 
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                installPackage(pkg);
+                              }}
+                              disabled={!!installingPackage}
+                              className="w-full group flex items-center justify-between p-3 bg-neutral-900/30 border border-emerald-900/5 rounded-lg hover:border-blue-500/30 hover:bg-blue-500/5 transition-all text-left disabled:opacity-50"
+                            >
+                              <span className="text-xs font-mono text-neutral-500 group-hover:text-neutral-300">{pkg}</span>
+                              <Plus className="w-3.5 h-3.5 text-neutral-700 group-hover:text-blue-500" />
+                            </button>
+                          ))}
+                          
+                          {pkgSearch && !commonPackages.some(p => p.includes(pkgSearch)) && !installedPackages.some(p => p.includes(pkgSearch)) && (
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                installPackage(pkgSearch);
+                              }}
+                              className="w-full p-4 border border-dashed border-blue-900/20 rounded-lg text-center hover:bg-blue-500/5 transition-all"
+                            >
+                              <div className="text-[10px] text-blue-500/60 font-mono uppercase mb-1">Module Not in Registry</div>
+                              <div className="text-xs font-mono text-blue-400">Install "{pkgSearch}" via micropip?</div>
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="p-3 bg-blue-900/5 border border-blue-900/10 rounded-lg">
-                        <p className="text-[9px] text-neutral-600 leading-relaxed uppercase font-mono">
-                          Tip: Packages are loaded into WASM memory. Some heavy packages might take time to fetch from CDN.
+                        <p className="text-[9px] text-neutral-600 leading-relaxed uppercase font-mono italic">
+                          Note: Pyodide loads packages directly into browser memory via CDN. Some larger science libraries may take time to fetch.
                         </p>
                       </div>
                     </div>
