@@ -2364,7 +2364,9 @@ ans, img
 
         // FALLBACK: Simulate 10k Linux Commands
         default:
-          if (kernel === 'rust') {
+          if (kernel === 'python') {
+            pythonCode = command;
+          } else if (kernel === 'rust') {
             await executeRust(command);
             return;
           } else if (kernel === 'javascript') {
