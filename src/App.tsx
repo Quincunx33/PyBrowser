@@ -25,6 +25,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/:lang" element={<LandingPage />} />
         <Route path="/terminal" element={<TerminalOS />} />
+        <Route path="/kernel/terminalos" element={<TerminalOS />} />
         <Route path="/kernel/python" element={<Python />} />
         <Route path="/kernel/javascript" element={<JavaScript />} />
         <Route path="/kernel/rust" element={<Rust />} />
