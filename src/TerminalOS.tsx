@@ -899,32 +899,63 @@ except:
   }, [pyodide]);
 
   // --- File System Utilities ---
-  const refreshFiles = useCallback((pyInstance = pyodide) => {
-    if (!pyInstance) return;
+  const crawl = useCallback((path: string, pyInstance = pyodide): FileNode[] => {
+    if (!pyInstance) return [];
     try {
-      const crawl = (path: string): FileNode[] => {
-        const items = pyInstance.FS.readdir(path);
-        return items
-          .filter((item: string) => item !== '.' && item !== '..')
-          .map((item: string) => {
-            const fullPath = `${path}/${item}`.replace(/\/+/g, '/');
-            const stat = pyInstance.FS.stat(fullPath);
-            const isDir = pyInstance.FS.isDir(stat.mode);
-            return {
-              name: item,
-              isDir,
-              path: fullPath,
-              children: isDir ? [] : undefined
-            };
-          });
-      };
-      setFiles(crawl('/home/pyodide'));
+      const items = pyInstance.FS.readdir(path);
+      return items
+        .filter((item: string) => item !== '.' && item !== '..')
+        .map((item: string) => {
+          const fullPath = `${path}/${item}`.replace(/\/+/g, '/');
+          const stat = pyInstance.FS.stat(fullPath);
+          const isDir = pyInstance.FS.isDir(stat.mode);
+          return {
+            name: item,
+            isDir,
+            path: fullPath,
+            children: isDir ? [] : undefined
+          };
+        });
     } catch (err) {
-      console.error('FS Refresh Error:', err);
+      console.error('FS crawl Error:', err);
+      return [];
     }
   }, [pyodide]);
 
-  const createFile = (name: string) => {
+  // Broadcast Channel for sync
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    channelRef.current = new BroadcastChannel('pybrowser-fs');
+    return () => {
+      channelRef.current?.close();
+    };
+  }, []);
+
+  const refreshFiles = useCallback((pyInstance = pyodide) => {
+    if (!pyInstance) return;
+    const files = crawl('/home/pyodide', pyInstance);
+    setFiles(files);
+    // Broadcast update
+    channelRef.current?.postMessage({ type: 'FILES', payload: files });
+  }, [crawl, pyodide]);
+
+  // Listener for FS requests
+  useEffect(() => {
+    if (!channelRef.current) return;
+    
+    channelRef.current.onmessage = (event) => {
+      const { type, payload } = event.data;
+      if (type === 'GET_FILES') {
+        channelRef.current?.postMessage({ type: 'FILES', payload: files });
+      }
+      if (type === 'CREATE_FILE') { createFile(payload.name); }
+      if (type === 'DELETE_FILE') { deletePath(payload.path); }
+    };
+  }, [pyodide, files, createFile, deletePath]);
+
+
+  function createFile(name: string) {
     if (name && pyodide) {
       try {
         pyodide.FS.writeFile(`/home/pyodide/${name}`, '');
@@ -974,7 +1005,7 @@ except:
     }
   };
 
-  const deletePath = (path: string) => {
+  function deletePath(path: string) {
     if (pyodide) {
       try {
         const stat = pyodide.FS.stat(path);
@@ -1735,20 +1766,34 @@ ans, img
       
       const wrappedCode = `
         ${imports}
+        const customConsole = {
+          log: (...args) => window.__terminalLog('output', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+          error: (...args) => window.__terminalLog('error', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+          warn: (...args) => window.__terminalLog('system', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+          info: (...args) => window.__terminalLog('system', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+        };
+
+        const console = customConsole;
+
         const _userCode = async () => {
           ${code}
         };
+        
         _userCode().then(res => {
-          if (res !== undefined) console.log("Code returned:", res);
+          if (res !== undefined) customConsole.log("Code returned:", res);
         }).catch(err => {
-          console.error(err);
+          customConsole.error(err);
         });
       `;
+      
+      (window as any).__terminalLog = (type: any, content: string) => {
+        addHistory(type, content);
+      };
+
       const blob = new Blob([wrappedCode], { type: 'application/javascript' });
       const url = URL.createObjectURL(blob);
-      await import(url);
+      await import(url /* @static-import-ignore */);
       URL.revokeObjectURL(url);
-      addHistory('success', 'JS Execution context created (Check browser console for outputs).');
     } catch (err: any) {
       addHistory('error', `JS Error: ${err.message}`);
     }
@@ -2106,11 +2151,27 @@ ans, img
             addHistory('error', `Error: '${fileToRun}' not found.`);
             return;
           }
-          if (fileToRun.endsWith('.py')) {
-            processCommand(`python ${fileToRun}`, taskId);
-          } else {
-            addHistory('system', `Executing ${fileToRun}...`);
-            addHistory('output', `[PROCESS START] ${fileToRun}\n----------------------------\n${targetToRun.content}\n----------------------------\n[PROCESS ENDED]`);
+          
+          try {
+            const content = pyodide.FS.readFile(targetToRun.path, { encoding: 'utf8' });
+            if (fileToRun.endsWith('.py')) {
+              processCommand(`python ${fileToRun}`, taskId);
+            } else if (fileToRun.endsWith('.js') || fileToRun.endsWith('.ts')) {
+              await executeJS(content);
+            } else if (fileToRun.endsWith('.rs')) {
+              await executeRust(content);
+            } else if (fileToRun.endsWith('.c')) {
+              await executePiston('c', content);
+            } else if (fileToRun.endsWith('.cpp') || fileToRun.endsWith('.cxx')) {
+              await executePiston('c++', content);
+            } else if (fileToRun.endsWith('.go')) {
+              await executeGo(content);
+            } else {
+              addHistory('system', `Executing ${fileToRun}...`);
+              addHistory('output', `[PROCESS START] ${fileToRun}\n----------------------------\n${content}\n----------------------------\n[PROCESS ENDED]`);
+            }
+          } catch (err: any) {
+            addHistory('error', `Run Error: ${err.message}`);
           }
           return;
 
@@ -2364,9 +2425,7 @@ ans, img
 
         // FALLBACK: Simulate 10k Linux Commands
         default:
-          if (kernel === 'python') {
-            pythonCode = command;
-          } else if (kernel === 'rust') {
+          if (kernel === 'rust') {
             await executeRust(command);
             return;
           } else if (kernel === 'javascript') {
@@ -2408,6 +2467,9 @@ ans, img
           } else if (kernel === 'sql') {
             await executePiston('sqlite3', command);
             return;
+          } else if (kernel === 'python') {
+            pythonCode = command;
+            break;
           }
 
           const unixCmds = [
@@ -2581,12 +2643,12 @@ ans, img
                 {showSidebar && sideView === 'files' && <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-500 rounded-full hidden md:block" />}
               </button>
               <button 
-                onClick={() => { if (activeFile) setActiveFile(null); setShowSidebar(false); }}
-                title={t('console')}
-                className={`p-2.5 rounded-xl transition-all duration-200 group ${!showSidebar && !activeFile ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/5'}`}
-              >
-                <TerminalIcon className="w-5 h-5" />
-              </button>
+                 onClick={() => { if (activeFile) setActiveFile(null); setShowSidebar(false); }}
+                 title={t('console')}
+                 className={`p-2.5 rounded-xl transition-all duration-200 group ${!showSidebar && !activeFile ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/5'}`}
+               >
+                 <TerminalIcon className="w-5 h-5" />
+               </button>
             </div>
           )}
 
@@ -2781,11 +2843,13 @@ ans, img
                         <p className="text-[9px] text-neutral-600 font-medium uppercase tracking-tighter">{t('mountedIn')}</p>
                       </div>
                       <div className="flex items-center gap-1">
+                        <button onClick={() => window.open('/standalone-file-manager', '_blank')} title="Open in New Tab" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><ExternalLink className="w-4 h-4"/></button>
                         <button onClick={() => { setCreatingType('file'); setNewName(''); }} title="New File" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Plus className="w-4 h-4" /></button>
                         <button onClick={() => { setCreatingType('folder'); setNewName(''); }} title="New Folder" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><FolderPlus className="w-4 h-4" /></button>
                         <button onClick={() => fileInputRef.current?.click()} title="Upload" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Upload className="w-4 h-4" /></button>
                       </div>
                     </div>
+                    {/* ... rest of files FM */}
 
                     <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pb-20">
                       {creatingType && (

@@ -17,6 +17,7 @@ import Kotlin from './kernels/Kotlin';
 import Dart from './kernels/Dart';
 import Swift from './kernels/Swift';
 import SQL from './kernels/SQL';
+import StandaloneFileManager from './StandaloneFileManager';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/kernel/dart" element={<Dart />} />
         <Route path="/kernel/swift" element={<Swift />} />
         <Route path="/kernel/sql" element={<SQL />} />
+        <Route path="/standalone-file-manager" element={<StandaloneFileManager />} />
       </Routes>
     </BrowserRouter>
   );
