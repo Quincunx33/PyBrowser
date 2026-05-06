@@ -1,108 +1,173 @@
-export const KERNELS: Record<string, { title: string; description: string; features: string[]; useCases: string; longDescription: string; }> = {
+export interface KernelInfo {
+  title: string;
+  description: string;
+  features: string[];
+  useCases: string;
+  longDescription: string;
+  history: string;
+  architecture: string;
+  ecosystem: string;
+}
+
+export const KERNELS: Record<string, KernelInfo> = {
   python: {
     title: "Python 3.11",
     description: "The premier language for Data Science, AI, and rapid prototyping.",
-    features: ["Dynamic Typing", "Extensive Standard Library", "WebAssembly (Pyodide)"],
-    useCases: "Machine Learning, Data Analysis, Scripting",
-    longDescription: "Python 3.11 represents a significant leap forward in performance and developer experience. As a high-level, interpreted language, it remains the gold standard for data science, artificial intelligence, and machine learning research. Its syntax is designed for maximum clarity, allowing developers to focus on solving complex problems rather than fighting intricacies of language implementation. Within this browser terminal environment, we leverage Pyodide—a port of CPython to WebAssembly—to allow you to execute Python code seamlessly within the sandbox without requiring any backend server infrastructure. This enables near-native performance for data manipulation tasks, utilizing powerful libraries like NumPy, Pandas, and Matplotlib directly in the client-side browser. Whether you are building complex neural network models, exploratory data visualizations, or just automating simple system tasks, Python provides the robustness and the massive ecosystem required for the job. Its strong emphasis on community-driven development has resulted in libraries for virtually every technological domain, from web scraping and backend development to scientific computing and distributed systems."
+    features: ["Dynamic Typing", "Extensive Standard Library", "WebAssembly (Pyodide)", "High-level Abstractions"],
+    useCases: "Machine Learning, Data Analysis, Scripting, Backend Development",
+    longDescription: "Python 3.11 represents a significant leap forward in performance and developer experience. As a high-level, interpreted language, it remains the gold standard for data science, artificial intelligence, and machine learning research. Its syntax is designed for maximum clarity, allowing developers to focus on solving complex problems rather than fighting intricacies of language implementation.",
+    history: "Python was conceived in the late 1980s by Guido van Rossum at Centrum Wiskunde & Informatica (CWI) in the Netherlands as a successor to the ABC programming language. Since its first release in 1991, Python has evolved through three major versions. Python 2.0 (2000) introduced list comprehensions and garbage collection, while Python 3.0 (2008) brought major cleanups but required a significant transition for the community. Python 3.11, the version featured here, is notable for its speed improvements of up to 60% over previous iterations.",
+    architecture: "Python operates on a virtual machine architecture. Source code is compiled into bytecode (.pyc files), which is then interpreted by the Python Virtual Machine (PVM). In our browser environment, we utilize Pyodide, which compiles the CPython interpreter into WebAssembly (WASM). This allows Python to interact directly with the browser's JavaScript environment while maintaining compatibility with C-based libraries like NumPy through a specialized foreign function interface.",
+    ecosystem: "The Python Package Index (PyPI) hosts over 400,000 projects. Key pillars of the ecosystem include NumPy for numerical computing, Pandas for data analysis, Scikit-learn for machine learning, and TensorFlow/PyTorch for deep learning. For web development, frameworks like Django and Flask have defined how scalable backend services are built for over a decade."
   },
   javascript: {
-    title: "JavaScript",
+    title: "JavaScript (ES2023+)",
     description: "The language of the web. Essential for modern, interactive applications.",
-    features: ["Event-Driven", "Asynchronous Programming", "Huge Ecosystem"],
-    useCases: "Web Development, Serverless Functions, Browser Automation",
-    longDescription: "JavaScript is the fundamental engine that powers the modern web. In this terminal environment, it serves as the ubiquitous language for interactive development. JavaScript's asynchronous capabilities, bolstered by modern Promises and async/await syntax, allow for highly concurrent and non-blocking operations, making it ideally suited for the browser environment. Our terminal utilizes the built-in JavaScript engine to offer you a robust environment for scripting, building browser-based tools, and managing complex application state. JavaScript's reach has expanded far beyond the client-side with the availability of vast npm repositories and tools that allow you to package, test, and deploy applications with ease. Understanding JavaScript is key to mastering the full-stack paradigm, and in this terminal, you can experiment directly with DOM manipulation, API interactions, and advanced frontend modularity at lightning speed. It is the language that bridges the gap between raw data manipulation and visual, interactive user interfaces, allowing you to build comprehensive tools entirely within the terminal interface."
+    features: ["Event-Driven", "Asynchronous Programming", "Huge Ecosystem", "First-class Functions"],
+    useCases: "Frontend Web Development, Server-side (Node.js), Browser Extensions",
+    longDescription: "JavaScript is the fundamental engine that powers the modern web. In this terminal environment, it serves as the ubiquitous language for interactive development. JavaScript's asynchronous capabilities, bolstered by modern Promises and async/await syntax, allow for highly concurrent and non-blocking operations.",
+    history: "Created in 10 days by Brendan Eich at Netscape in 1995, JavaScript was originally intended to be a simple scripting language for non-professional programmers. However, with the rise of AJAX in the mid-2000s and the release of Chrome's V8 engine in 2008, it transformed into a high-performance language. The standardization under ECMAScript (ES6 in 2015) was a turning point for the language's modern era.",
+    architecture: "JavaScript engines like V8 use Just-In-Time (JIT) compilation. They profile the code as it runs and compile hot paths into highly optimized machine code. In this terminal, JS runs in its native environment—the browser—giving it zero-overhead access to DOM APIs and browser-native capabilities like WebGL and WebUSB.",
+    ecosystem: "The npm (Node Package Manager) ecosystem is the largest repository of software in human history. From frontend frameworks like React and Vue to utility libraries like Lodash and build tools like Vite, JavaScript offers a solution for every conceivable programming task. It is the only language that can truly run 'everywhere'—client, server, and IoT."
   },
   rust: {
     title: "Rust",
     description: "Systems programming language focused on safety and performance.",
-    features: ["Memory Safety", "Zero-Cost Abstractions", "Fearless Concurrency"],
-    useCases: "WASM Engine, Systems Programming, High-Performance Tools",
-    longDescription: "Rust is a modern systems programming language that addresses the long-standing trade-off between memory safety and performance. Its unique ownership model, enforced by the compiler, ensures memory safety without the need for a garbage collector, which is revolutionary for systems programming. This makes Rust a powerhouse for writing performance-critical WASM modules that can run at near-native speed in this browser environment. Rust's 'fearless concurrency' means you can write multi-threaded code with the confidence that you will not encounter data races or typical memory-related crashes. Within our TerminalOS, Rust is utilized to construct high-performance backend-emulating modules, CLI utilities, and WASM-based compilers for other languages. It is the language of choice for building infrastructure that needs to be both incredibly fast and rock-solid secure. By learning Rust, you gain a deep understanding of memory management, low-level data structures, and the advanced paradigms required to build systems that scale."
+    features: ["Memory Safety", "Zero-Cost Abstractions", "Fearless Concurrency", "Strict Type System"],
+    useCases: "WASM Engine, Systems Programming, High-Performance Tools, Blockchain",
+    longDescription: "Rust is a modern systems programming language that addresses the long-standing trade-off between memory safety and performance. Its unique ownership model, enforced by the compiler, ensures memory safety without the need for a garbage collector.",
+    history: "Rust began as a personal project by Graydon Hoare at Mozilla in 2006. Mozilla began sponsoring the project in 2009 and announced it in 2010. Rust 1.0 was released in 2015, establishing its stability guarantees. It has since topped the list of 'most loved languages' in developer surveys for many consecutive years.",
+    architecture: "Rust relies on an LLM-based compilation pipeline. Its most defining architectural feature is the 'Borrow Checker,' which manages memory allocation at compile-time. By utilizing affine types, Rust ensures that data is either uniquely owned or immutably shared, preventing data races and memory leaks at the hardware level.",
+    ecosystem: "The Rust ecosystem is managed via Cargo, which handles dependency management, builds, and documentation. Key crates (libraries) include Serde for serialization, Rayon for data parallelism, and Tokio for asynchronous networking. Rust's growing popularity for WebAssembly development makes it a cornerstone of the future of the web."
   },
   c: {
     title: "C",
     description: "The foundational language for systems and low-level control.",
-    features: ["Extremely Lightweight", "Direct Memory Access", "Minimalist"],
-    useCases: "Kernel Development, Emulators, Embedded Systems",
-    longDescription: "C is the language that defined modern computing. It is the low-level bedrock upon which operating systems, compilers, and major infrastructure are built. Despite being decades old, its importance remains unmatched for deep systems integration, resource-constrained environments, and performance-critical applications. In our terminal OS, C provides a lens into how systems actually communicate with hardware and manage memory. It empowers you to interact at the closest possible level with system resources. While it lacks the high-level memory safety features of modern languages like Rust or Python, it provides unparalleled performance and total control over every byte of your program's execution. Within this sandbox, C is used for emulators, low-level data structure manipulation, and performance-intensive computational modules. It is the ultimate tool for engineers who want to understand the mechanics of the computer itself, stripping away layers of abstraction to reveal the raw logic operating at the machine level."
+    features: ["Extremely Lightweight", "Direct Memory Access", "Minimalist", "High Portability"],
+    useCases: "Kernel Development, Emulators, Embedded Systems, Hardware Drivers",
+    longDescription: "C is the language that defined modern computing. It is the low-level bedrock upon which operating systems, compilers, and major infrastructure are built. It provides total control over every byte of your program's execution.",
+    history: "Developed by Dennis Ritchie at Bell Labs between 1969 and 1973, C was created to rewrite the Unix operating system. Its design was influenced by the earlier language B. The publication of 'The C Programming Language' by Kernighan and Ritchie (K&R) in 1978 served as the original de facto standard.",
+    architecture: "C is a procedural language that maps closely to machine instructions. It uses a manual memory management model where the programmer is responsible for allocation and deallocation (malloc/free). This lack of a runtime or garbage collector is what gives C its legendary performance and predictability.",
+    ecosystem: "As the oldest widely-used high-level language, C's ecosystem is essentially 'all of computer science.' Virtually all modern operating systems (Linux, Windows, macOS) are written in C. It remains the universal 'glue' language, with almost every other language providing a way to interface with C libraries (C FFI)."
   },
   cpp: {
     title: "C++",
     description: "Object-oriented performance with low-level control.",
-    features: ["High Performance", "Standard Template Library", "Zero-Cost Abstractions"],
-    useCases: "Game Engines, Real-time Systems, Computational Tools",
-    longDescription: "C++ extends the foundational capabilities of C by introducing powerful object-oriented programming paradigms, generic programming, and one of the most comprehensive standard libraries in existence. It is the primary tool for building high-performance software that demands complex architectural structure—such as game engines, real-time control systems, and heavy-duty computational simulations. The key concept of C++ is 'zero-cost abstractions,' meaning that powerful features like classes, templates, and inheritance provide clean, reusable code without significantly sacrificing the raw performance of the underlying binary. Inside the browser terminal, C++ modules leverage WASM compilation targets to bridge the gap between high-level logic and high-speed execution. Whether you are building complex physics engines, visual processing libraries, or performance-critical system tools, C++ provides the architectural versatility and the machine-level performance to make these projects a reality, effectively handling the complexities of large-scale software systems."
+    features: ["High Performance", "Standard Template Library", "Zero-Cost Abstractions", "Generic Programming"],
+    useCases: "Game Engines, Real-time Systems, Computational Tools, Browser Engines",
+    longDescription: "C++ extends the foundational capabilities of C by introducing powerful object-oriented programming paradigms, generic programming, and one of the most comprehensive standard libraries in existence.",
+    history: "Created by Bjarne Stroustrup at Bell Labs starting in 1979, C++ began as 'C with Classes.' It was designed to add Simula-style abstractions to C's performance. The first official version was released in 1985. Modern C++ (C++11, 14, 17, 20) has drastically changed the language with features like move semantics and smart pointers.",
+    architecture: "C++ supports multiple programming paradigms: procedural, object-oriented, and generic (via templates). It is a compiled language that targets raw machine code. Its 'Zero-overhead principle' ensures that you don't pay in performance for the abstractions you don't use.",
+    ecosystem: "The Standard Template Library (STL) provides essential containers and algorithms. Beyond that, C++ powers most of the software we use daily: Photoshop, Chrome, and game engines like Unreal Engine. It is the undisputed king of performance-oriented software development."
   },
   go: {
     title: "Go (Golang)",
     description: "Designed for simplicity, concurrency, and scalability.",
-    features: ["Strongly Typed", "First-class Concurrency", "Fast Compilation"],
-    useCases: "Microservices, Networking, Cloud Infrastructure",
-    longDescription: "Go is a language designed at Google to solve the challenges of building massively scalable, concurrent, and highly maintainable software. Its syntax is intentionally minimalist, favoring readability and simplicity over complex language features. Go's defining feature is its first-class concurrency model, represented by goroutines and channels, which make writing robust, multi-threaded applications significantly easier than in traditional languages. This makes Go the standard for cloud-native infrastructure, high-performance web servers, and complex microservice architectures. Inside our terminal environment, Go's fast compilation and statically linked binaries serve as an excellent base for creating portable, fast-running system utilities and networking tools. By focusing on productivity, developer happiness, and operational simplicity, Go has quickly become an essential tool in a modern engineer's toolkit. It handles modern concurrency patterns without the complexity, ensuring that you can build scalable backend-oriented logic with clarity and efficiency."
+    features: ["Strongly Typed", "First-class Concurrency", "Fast Compilation", "Garbage Collected"],
+    useCases: "Microservices, Networking, Cloud Infrastructure, DevOps Tools",
+    longDescription: "Go is a language designed at Google to solve the challenges of building massively scalable, concurrent, and highly maintainable software. Its syntax is intentionally minimalist.",
+    history: "Developed by Robert Griesemer, Rob Pike, and Ken Thompson at Google, Go was announced in 2009. It was designed to improve programming productivity in an era of multicore machines and large codebases. Its creators were veterans from the Bell Labs Unix and C teams.",
+    architecture: "Go uses a statically-linked binary model and includes a small, highly efficient runtime that handles garbage collection and scheduling. Its most famous feature is 'Goroutines'—lightweight threads managed by the Go runtime rather than the OS, allowing millions of concurrent processes to run on a single machine.",
+    ecosystem: "Go is the language of the 'Cloud Native' era. Docker, Kubernetes, and Terraform are all written in Go. Its focus on simplicity and high-performance networking has made it the default choice for backend infrastructure and cloud services."
   },
   csharp: {
     title: "C# (.NET)",
     description: "Robust, enterprise-grade language for scalable apps.",
-    features: ["Static Typing", "Rich IDE Ecosystem", "Great Integration"],
-    useCases: "Enterprise Apps, Game Development (Unity), Web APIs",
-    longDescription: "C# is a highly robust, enterprise-grade language developed by Microsoft for the .NET ecosystem. Over the years, it has evolved into a versatile powerhouse capable of building everything from high-performance web APIs and secure enterprise applications to immersive 3D games within the Unity engine. C# combines statically typed, memory-safe development with a garbage-collected runtime, offering a balance between performance and rapid development speed. It provides an extensive ecosystem of libraries and frameworks, making it a reliable choice for long-term project viability. In this terminal environment, C# is supported for its capability in building complex enterprise systems and interacting seamlessly with modern framework patterns. It is an excellent choice for developers who require a strongly typed environment, rich tooling support, and the ability to build large-scale applications with clear, maintainable architecture. Its balance of power, productivity, and modern features makes it a cornerstone of the professional software engineering landscape."
+    features: ["Static Typing", "Rich IDE Ecosystem", "Great Integration", "Modern Syntax"],
+    useCases: "Enterprise Apps, Game Development (Unity), Web APIs, Desktop Software",
+    longDescription: "C# is a highly robust, enterprise-grade language developed by Microsoft for the .NET ecosystem. It has evolved into a versatile powerhouse for modern software engineering.",
+    history: "Led by Anders Hejlsberg (who also created Turbo Pascal and TypeScript), C# was launched in 2000 as part of the .NET initiative. Originally influenced by Java and C++, it has since introduced many pioneering features like LINQ and async/await that have been adopted by other languages.",
+    architecture: "C# compiles to Common Intermediate Language (CIL), which is then JIT-compiled by the Common Language Runtime (CLR). This provides features like cross-language interoperability, advanced memory management, and security sandboxing while maintaining high performance.",
+    ecosystem: "Supported by Microsoft and a huge open-source community, the NuGet package manager hosts thousands of libraries. The .NET framework (and now cross-platform .NET Core) provides everything needed for high-scale web services, desktop UI (WPF/MAUI), and 3D games (Unity)."
   },
   zig: {
     title: "Zig",
     description: "A modern alternative to C with safety and simplicity at its core.",
-    features: ["Comptime", "No Hidden Allocators", "Interoperable with C"],
-    useCases: "Portable Libraries, Game Engines, Systems Tools",
-    longDescription: "Zig is a modern systems programming language that serves as a direct, cleaner, and safer alternative to C. It is designed to be as performant as C while mitigating the most common pitfalls that have historically plagued systems developers. Its defining feature is 'comptime,' which allows code to be executed during compilation, enabling extremely powerful, type-safe metaprogramming without the pitfalls of C++ templates. Zig also guarantees no hidden memory allocations, ensuring that all memory management is explicit and clearly visible in the code, which is crucial for building predictable systems. Within this terminal, Zig is used as a highly efficient tool for creating portable system-level libraries, high-speed CLI utilities, and performance-critical WASM modules. Its seamless interoperability with C makes it an effortless plug-in for legacy systems while giving you the benefits of modern safety and compile-time capabilities. Zig is rapidly becoming a favorite among systems engineering aficionados who value absolute control with the pragmatic benefits of modern language design."
+    features: ["Comptime", "No Hidden Allocators", "Interoperable with C", "No Runtime"],
+    useCases: "Portable Libraries, Game Engines, Systems Tools, Compilers",
+    longDescription: "Zig is a modern systems programming language that serves as a direct, cleaner, and safer alternative to C. It is designed to be as performant as C while mitigating common pitfalls.",
+    history: "Zig was created by Andrew Kelley in 2016. It gained significant attention for its pragmatic approach to systems programming, focusing on fixing C's issues without the complexity of Rust or the overhead of a garbage collector.",
+    architecture: "Zig has no hidden control flow and no hidden memory allocations. Its unique 'Comptime' feature allows for code generation and introspection at compile-time, replacing the need for complex preprocessors or macros. It can also act as a C/C++ compiler, making it an excellent build tool.",
+    ecosystem: "Though young, the Zig ecosystem is rapidly growing in the systems programming world. Projects like the Bun runtime and various high-performance databases are being built in Zig. Its ability to seamlessly use existing C libraries makes it immediately useful in production."
   },
   ruby: {
     title: "Ruby",
     description: "Productivity-focused language with a elegant, readable syntax.",
-    features: ["Object-Oriented", "Highly Readable", "Powerful Metaprogramming"],
-    useCases: "Web Development (Rails), Scripting, Automation",
-    longDescription: "Ruby is a language designed by Yukihiro Matsumoto to make developers productive and happy. Its syntax is incredibly elegant, natural, and expressive, reading more like a human language than typical code. Ruby is deeply object-oriented, meaning that virtually everything interacting in a Ruby program is an object, encouraging modular and clean code architecture. It is famously known for its powerful metaprogramming capabilities, which allow developers to write highly flexible code that can dynamically alter its own structure, a technique championed by frameworks like Ruby on Rails. Within our terminal environment, Ruby serves as an excellent tool for rapid scripting, file automation, and building small, expressive web tools. It allows for incredibly quick proof-of-concept development, meaning you can take a complex idea and turn it into a working script in remarkably short time. Ruby's focus is on developer experience, making it perfect for tasks where the clarity of the solution and the speed of development are paramount."
+    features: ["Object-Oriented", "Highly Readable", "Powerful Metaprogramming", "Dynamic"],
+    useCases: "Web Development (Rails), Scripting, Automation, DevOps",
+    longDescription: "Ruby is a language designed to make developers productive and happy. Its syntax is incredibly elegant, natural, and expressive.",
+    history: "Created by Yukihiro 'Matz' Matsumoto in Japan, Ruby was released in 1995. Matz combined elements from Perl, Smalltalk, and Lisp to create a language that balanced functional and imperative programming. It became globally popular after the release of Ruby on Rails in 2005.",
+    architecture: "The standard implementation (MRI) is an interpreted language running on the YARV virtual machine. Ruby is an 'everything is an object' language, where even numbers and classes are instance objects, providing a very consistent and flexible programming model.",
+    ecosystem: "The RubyGems system is the heart of the ecosystem. Ruby on Rails remains one of the most powerful and productive web frameworks ever created, famously powering GitHub, Shopify, and Airbnb. Ruby also excels in automation with tools like Homebrew and Puppet."
   },
   php: {
     title: "PHP",
     description: "The backbone of server-side web development for decades.",
-    features: ["HTML Integrated", "Extensive Frameworks", "Server-side Oriented"],
-    useCases: "Web Applications, CMSs, Server-Side Logic",
-    longDescription: "PHP has been a workhorse of the web for decades, powering everything from personal blogs to the most complex enterprise-level dynamic web applications. PHP’s strengths lie in its deep integration with the web’s core infrastructure and its ease of deployment. Its server-side nature allows it to process requests, interact with databases, and dynamically generate HTML with incredible speed. Today’s PHP, with its modern frameworks and heavily typed features, is far removed from its early script-based beginnings. It provides a robust, mature environment for handling complex server-side logic in a request-response architecture. Within this browser environment, PHP is supported for engineers needing to test server-side logic, data ingestion, and building dynamic content processors. It remains an vital skill for any engineer operating in the web sphere, providing the reliability, the massive community support, and the established tooling that make maintaining long-term web applications manageable and scalable."
+    features: ["HTML Integrated", "Extensive Frameworks", "Server-side Oriented", "Fast Deployment"],
+    useCases: "Web Applications, CMSs (WordPress), Server-Side Logic",
+    longDescription: "PHP has been a workhorse of the web for decades. Today’s PHP, with its modern frameworks and heavily typed features, is a mature environment for large-scale production.",
+    history: "PHP was originally created in 1994 by Rasmus Lerdorf as a set of Common Gateway Interface (CGI) scripts in C. It evolved into a complete language over time. PHP 7 and 8 have brought massive performance improvements, comparable to Node.js and Java.",
+    architecture: "PHP typically runs as a module within a web server or via CGI. It follows a shared-nothing architecture, where each request starts a fresh state, making it inherently scalable and easy to debug. Recent versions have added a JIT compiler to further boost performance.",
+    ecosystem: "PHP powers over 75% of the web. Composer is its modern dependency manager. Frameworks like Laravel and Symfony have modernized PHP development, providing expressive syntax and robust tools for building complex APIs and monoliths."
   },
   typescript: {
     title: "TypeScript",
     description: "JavaScript with strong typing for scalable web applications.",
-    features: ["Type Safety", "Great Tooling", "Easy Refactoring"],
-    useCases: "Large-scale Web Applications, Complex Frontend UI",
-    longDescription: "TypeScript is the evolution of JavaScript that introduces a robust static type system, designed specifically for building large-scale, enterprise-ready web applications. It transforms the occasionally unpredictable nature of JavaScript into a structured, highly predictable language. TypeScript catches errors at compile-time that would otherwise only appear at runtime, significantly reducing the amount of debugging required. Its rich type system allows for highly expressive APIs and deep integration with powerful IDEs, leading to unmatched developer productivity through intelligent code completion, safe refactoring, and clear intent documentation. Within this browser terminal OS, TypeScript serves as the ideal language for constructing the complex, data-driven interfaces that define modern web applications. By utilizing TypeScript, you ensure that your code is maintainable, scalable, and resilient to the structural changes that inevitable happen as software projects grow in complexity over time."
+    features: ["Type Safety", "Great Tooling", "Easy Refactoring", "Interoperability"],
+    useCases: "Large-scale Web Applications, Complex Frontend UI, Enterprise JS",
+    longDescription: "TypeScript is the evolution of JavaScript that introduces a robust static type system, designed specifically for building large-scale, enterprise-ready applications.",
+    history: "Developed by Microsoft and led by Anders Hejlsberg, TypeScript was first released in 2012. It was created to help developers build larger, more complex JavaScript applications. It has since become the 'industry standard' for frontend and Node.js development.",
+    architecture: "TypeScript is a 'superset' of JavaScript. It doesn't run directly; it is 'transpiled' into standard JavaScript by the TypeScript compiler (tsc). This means it can run anywhere JS runs, while providing safety during the development phase.",
+    ecosystem: "Virtually all modern JavaScript libraries now ship with TypeScript definitions. Frameworks like Angular are built entirely in TS, and it is the preferred language for most React and Next.js developers. It is essential for managing codebases in large teams."
   },
   kotlin: {
     title: "Kotlin",
     description: "Modern language running on the JVM, built for Android and beyond.",
-    features: ["Concise", "Safe (null-safety)", "Great Interoperability"],
-    useCases: "Android Development, Server-side Backend, Multiplatform",
-    longDescription: "Kotlin is a modern, statically typed language that runs on the Java Virtual Machine. Developed by JetBrains, it was created to improve upon Java's verbose syntax while guaranteeing null safety—a source of countless bugs, crashes, and maintenance nightmares in older JVM languages. Kotlin is highly expressive, concise, and fully interoperable with existing Java codebases, making it easier to adopt or integrate into large, legacy enterprise systems. While it has become the standard language for Android development, Kotlin’s reach extends deep into the server-side backend world and increasingly into multiplatform development projects. Within our terminal environment, Kotlin supports developers needing to build backend-heavy logic or multiplatform applications that share code across devices. Its balance of safety, modern language ergonomics, and performance makes it a favorite for engineers working in modern enterprise ecosystems."
+    features: ["Concise", "Safe (null-safety)", "Great Interoperability", "Statically Typed"],
+    useCases: "Android Development, Server-side Backend, Multiplatform, Desktop",
+    longDescription: "Kotlin is a modern, statically typed language developed by JetBrains. It was created to improve upon Java's verbose syntax while guaranteeing null safety.",
+    history: "Announced in 2011, Kotlin was designed to be faster to compile and more expressive than Java. In 2017, Google announced Kotlin as a first-class language for Android development, and in 2019, it became the preferred language for Android apps.",
+    architecture: "Kotlin compiles to JVM bytecode, allowing it to run anywhere Java runs. It is designed to be 100% interoperable with Java, meaning developers can use Java libraries from Kotlin and vice versa. It also supports compilation to JavaScript and LLVM (Kotlin/Native).",
+    ecosystem: "Kotlin is now the dominant language for Android. On the server side, frameworks like Ktor and Spring Boot support Kotlin natively. The Kotlin Multiplatform (KMP) initiative is currently revolutionizing how code is shared across iOS and Android."
   },
   dart: {
     title: "Dart",
     description: "Client-optimized language for fast UI development across all platforms.",
-    features: ["Fast UI Rendering", "Strongly Typed", "Productive"],
-    useCases: "Mobile App Development (Flutter), Web Dev",
-    longDescription: "Dart is a language optimized specifically for building fast, beautiful, and interactive user interfaces across desktop, mobile, and web. It is the language that powers the Flutter framework, which allows developers to build consistent, high-performance UI across multiple platforms from a single codebase. Dart’s development experience is top-tier, focusing on fast build-reload cycles and strong, static type systems that ensure application stability as the codebase grows. It provides a highly productive environment for UI engineers who want to focus on pixel-perfect layouts and smooth interaction transitions. In our terminal OS, Dart is used for developers focused on client-side application design and building tools that emphasize visual consistency and high-speed execution. Whether you are creating a responsive web tool or a complex mobile-like dashboard in the browser, Dart gives you the modern syntax and the performance characteristics needed for the job."
+    features: ["Fast UI Rendering", "Strongly Typed", "Productive", "Hot Reload"],
+    useCases: "Mobile App Development (Flutter), Web Dev, Desktop Apps",
+    longDescription: "Dart is a language optimized specifically for building fast, beautiful, and interactive user interfaces using the Flutter framework.",
+    history: "Released by Google in 2011, Dart was initially seen as a potential replacement for JavaScript. However, it found its true calling with the release of the Flutter UI framework in 2017, which propelled it into the mainstream for mobile app development.",
+    architecture: "Dart features a double-compiler approach: it uses JIT (Just-In-Time) compilation for fast development (Hot Reload) and AOT (Ahead-Of-Time) compilation for high-performance production binaries. Its garbage collector is specifically optimized for high-frequency UI updates.",
+    ecosystem: "The Dart ecosystem revolves around 'pub.dev', its package manager. Flutter is the primary driver of the language, being the most popular framework for cross-platform mobile development today. Dart is also increasingly used for high-performance web and CLI tools."
   },
   swift: {
     title: "Swift",
     description: "High-performance language from Apple for modern systems.",
-    features: ["Type Safety", "Fast & Secure", "Expressive"],
-    useCases: "iOS Development, macOS Systems Programming",
-    longDescription: "Swift is the modern, powerful, and safe programming language from Apple. Designed to replace older languages like Objective-C, Swift is built for performance and safety from the ground up, utilizing modern compiler technologies to create optimized binaries. It is highly expressive, encouraging clean, readable code with robust features such as type inference, optionals, and safe memory management. Swift's design goal is to make programming enjoyable while guaranteeing the highest level of stability and security. It is the primary language used for the entire Apple software ecosystem, but its utility extends far beyond just mobile and desktop apps. Within our terminal, Swift is supported for developers interested in low-level systems programming and application-layer software development that demand high performance, secure memory models, and modern language syntax. Its combination of speed, safety, and modern design makes it an indispensable tool for systems engineers working within and outside the Apple environment."
+    features: ["Type Safety", "Fast & Secure", "Expressive", "ARC Memory Management"],
+    useCases: "iOS Development, macOS Systems Programming, Server-side Swift",
+    longDescription: "Swift is the modern, powerful, and safe programming language from Apple. Designed to replace Objective-C, it is built for performance and safety.",
+    history: "Developed at Apple beginning in 2010 and released in 2014, Swift was the result of a decade of research into language design. It was open-sourced in 2015, leading to its expansion into Linux and server-side environments.",
+    architecture: "Swift uses the LLVM compiler and Automatic Reference Counting (ARC) for memory management. Unlike languages with garbage collectors, ARC removes the need for stop-the-world pauses, giving Swift predictable, low-latency performance characteristic of systems languages.",
+    ecosystem: "Swift is the heart of development for iPhone, iPad, Mac, and Apple Watch. The Swift Package Manager (SPM) is integrated into Xcode and the CLI. Outside of Apple platforms, frameworks like Vapor allow Swift to be used for high-performance backend systems."
   },
   sql: {
     title: "SQL",
     description: "The standard for relational database management and querying.",
-    features: ["Declarative", "Highly Efficient Querying", "Relational Model"],
-    useCases: "Database Management, Data Analysis, Backend Support",
-    longDescription: "SQL is not merely a language; it is the industry standard for interacting with relational databases and managing data. Its declarative nature allows developers to specify *what* data they need, rather than *how* the computer should go about retrieving it, delegating the complex optimization work to the database engine. SQL is incredibly powerful, enabling efficient querying, transformation, and structural management of massive datasets across virtually every industry. In this terminal environment, SQL is integrated as a core tool for engineers who need to perform deep data analysis, manage relational data, and construct support backends for their applications. Mastery of SQL is vital for any engineering role that touches on data persistence, analytics, or complex system modeling. It empowers you to perform surgical data operations, ensure referential integrity, and build reliable backend foundations for complex applications that scale."
+    features: ["Declarative", "Highly Efficient Querying", "Relational Model", "ACID Compliant"],
+    useCases: "Database Management, Data Analysis, Backend Support, Business Intelligence",
+    longDescription: "SQL (Structured Query Language) is the indispensable standard for managing and manipulating relational databases efficiently across all technological domains.",
+    history: "SQL was developed at IBM by Donald D. Chamberlin and Raymond F. Boyce in the early 1970s based on Edgar F. Codd's relational model. It was standardized by ANSI in 1986 and has since become one of the most widely used and influential languages in the world.",
+    architecture: "SQL is a declarative language, meaning you describe the 'what' and the database engine determines the 'how'. It operates on sets of data (tables) and provides a strong foundation for data integrity through constraints, triggers, and transactions.",
+    ecosystem: "Every major database system—PostgreSQL, MySQL, SQLite, Oracle, SQL Server—uses a dialect of SQL. It is the language of business data, powering everything from bank transactions and global logistics to the personalized recommendation systems on social media."
+  },
+  terminalos: {
+    title: "Terminal OS v2.0",
+    description: "The next-generation browser-based operating system for cloud-native development.",
+    features: ["WASM Execution", "Sandboxed Environment", "Virtual File System", "Multi-Kernel Support", "POSIX Emulation", "Real-time AI Integration"],
+    useCases: "Cloud Development, Interactive Learning, High-Security Sandboxing, Legacy System Emulation",
+    longDescription: "Terminal OS is a revolutionary computing environment built entirely on modern web standards. By leveraging WebAssembly, SharedArrayBuffer, and advanced browser capabilities, it provides a full-featured Unix-like environment directly in your navigation bar. It is designed for engineers, security researchers, and developers who need a disposable, secure, and highly performant workspace that travels with them. No installation, no configuration—just pure computational power in any browser, on any device.",
+    history: "Terminal OS was conceived in 2024 as a response to the growing complexity of local development environments and the rise of cloud-computing. The goal was to bridge the gap between the flexibility of a local terminal and the accessibility of a web browser. After two years of intensive research into WebAssembly-to-OS mapping and virtual memory management, version 2.0 was released in 2026, introducing the multi-kernel architecture that allows 15+ different programming languages to run simultaneously within a single browser tab.",
+    architecture: "The core of Terminal OS is built on a custom microkernel named 'Aether.' Aether handles the scheduling of WASM-compiled language runtimes and manages a robust virtual file system (VFS) that uses IndexedDB for persistent storage. Networking is handled via a specialized WebSocket proxy that emulates raw TCP/IP sockets, allowing standard CLI tools like curl and git to function as if they were running on a native Linux machine. The UI is built using React and Framer Motion, providing a 60FPS fluid experience even during heavy computational tasks.",
+    ecosystem: "Terminal OS supports a vast ecosystem of over 500+ pre-compiled CLI utilities. It integrates seamlessly with popular IDEs, allowing you to sync your workspace between local machines and the cloud. The 'Terminal Market' allows developers to share custom scripts, kernel extensions, and environment configurations. With built-in AI assistance powered by Gemini, debugging and code generation are integrated into the core shell experience, making it the most advanced development platform ever created for the web."
   }
 };
-

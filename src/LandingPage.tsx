@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Terminal, Code, Cpu, Zap, Globe, ArrowRight, ShieldCheck, Database, Layout } from 'lucide-react';
+import { Terminal, Code, Cpu, Zap, Globe, ArrowRight, ShieldCheck, Database, Info, Layers, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { KERNELS } from './kernelData';
 
@@ -11,15 +11,6 @@ const languages = [
   { code: 'fr', name: 'French', native: 'Français' },
   { code: 'de', name: 'German', native: 'Deutsch' },
   { code: 'zh', name: 'Chinese', native: '中文' },
-  { code: 'ja', name: 'Japanese', native: '日本語' },
-  { code: 'ar', name: 'Arabic', native: 'العربية' },
-  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
-  { code: 'ru', name: 'Russian', native: 'Русский' },
-  { code: 'pt', name: 'Portuguese', native: 'Português' },
-  { code: 'it', name: 'Italian', native: 'Italiano' },
-  { code: 'ko', name: 'Korean', native: '한국어' },
-  { code: 'tr', name: 'Turkish', native: 'Türkçe' },
-  { code: 'nl', name: 'Dutch', native: 'Nederlands' },
 ];
 
 const translations: Record<string, any> = {
@@ -45,14 +36,27 @@ const translations: Record<string, any> = {
         desc: "Analyze datasets, render complex charts, and utilize Pandas-like functionality without installing dependencies."
       }
     ],
-    detailsTitle: "Why Choose PyBrowser OS?",
+    detailsTitle: "Why Choose Terminal OS?",
     details: [
       "Privacy First: Everything runs locally. No data is sent to external servers unless you explicitly request it.",
       "Instant Environment: Stop wrestling with Docker, virtual environments, and package managers. Start writing code in seconds.",
       "Cross-Platform: Works on Windows, Mac, Linux, iOS, and Android through modern browser APIs.",
       "Integrated Workflows: Combines code execution, file management, image processing, and AI in a single cohesive interface."
     ],
-    footer: "© 2026 PyBrowser OS. Built for modern engineers."
+    faqTitle: "Frequently Asked Questions",
+    faq: [
+      { q: "Is this a real Operating System?", a: "Terminal OS is a browser-based environment that emulates the behavior of a Unix system. It leverages WebAssembly (WASM) to run real language binaries like Python and C directly in your browser's dedicated thread." },
+      { q: "Do I need an internet connection?", a: "Once the initial core is loaded, most functions work offline. However, for AI integration or loading remote kernels, a temporary connection is required." },
+      { q: "Is my data secure?", a: "Yes. Since the execution happens client-side, your source code and data never leave your computer unless you use a cloud-sync feature." }
+    ],
+    roadmapTitle: "Development Roadmap 2026",
+    roadmap: [
+      { stage: "Q1", task: "Multi-kernel parallel execution and shared memory support." },
+      { stage: "Q2", task: "Full GUI support for legacy X11 applications via WASM." },
+      { stage: "Q3", task: "Decentralized workspace sharing and collaborative terminal sessions." },
+      { stage: "Q4", task: "Integration with next-gen multimodal AI for automatic script generation." }
+    ],
+    footer: "© 2026 Terminal OS. Built for modern engineers."
   },
   bn: {
     heroTitle: "পরবর্তী প্রজন্মের ব্রাউজার টার্মিনাল",
@@ -76,270 +80,36 @@ const translations: Record<string, any> = {
         desc: "নির্ভরতা ইনস্টল না করেই ডেটাসেট বিশ্লেষণ, চার্ট তৈরি এবং পান্ডাস-এর মতো কাজ করুন।"
       }
     ],
-    detailsTitle: "পাইব্রোউজার ওএস কেন বেছে নেবেন?",
+    detailsTitle: "টার্মিনাল ওএস কেন বেছে নেবেন?",
     details: [
       "প্রাইভেসি ফাস্ট: সবকিছু লোকালি চালিত হয়। আপনার ডেটা অন্য কোথাও যায় না।",
       "ইনস্ট্যান্ট এনভায়রনমেন্ট: ভার্চুয়াল এনভায়রনমেন্ট, ডকার ছাড়াই নিমেষে কোডিং শুরু করুন।",
       "ক্রস-প্ল্যাটফর্ম: উইন্ডোজ, ম্যাক, লিনাক্স এবং মোবাইলে কাজ করে।",
       "ইন্টিগ্রেটেড ওয়ার্কফ্লো: কোড, ফাইল, ইমেজ এবং এআই সবকিছু এক জায়গায়।"
     ],
-    footer: "© 2026 PyBrowser OS. আধুনিক ইঞ্জিনিয়ারদের জন্য তৈরি।"
-  },
-  es: {
-    heroTitle: "El Terminal de Navegador de Próxima Generación",
-    heroSubtitle: "SO de terminal impulsado por WASM, listo para IA, completamente basado en navegador.",
-    launchBtn: "Iniciar Terminal OS",
-    featuresTitle: "Funciones Inigualables en el Navegador",
-    features: [
-      { icon: 'cpu', title: "Arquitectura WASM", desc: "Ejecute Python, Rust, C directamente. Sin necesidad de servidor." },
-      { icon: 'ai', title: "Herramientas de IA Integradas", desc: "Aprendizaje automático y visión artificial en su dispositivo." },
-      { icon: 'data', title: "Ciencia de Datos", desc: "Analice conjuntos de datos y gráficos sin instalar dependencias." }
+    faqTitle: "সচরাচর জিজ্ঞাসিত প্রশ্ন",
+    faq: [
+      { q: "এটি কি একটি আসল অপারেটিং সিস্টেম?", a: "টার্মিনাল ওএস একটি ব্রাউজার-ভিত্তিক পরিবেশ যা একটি ইউনিক্স সিস্টেমের আচরণ অনুকরণ করে। এটি আপনার ব্রাউজারে সরাসরি পাইথন এবং সি এর মতো রানটাইম চালানোর জন্য WebAssembly (WASM) ব্যবহার করে।" },
+      { q: "আমার কি ইন্টারনেট সংযোগ প্রয়োজন?", a: "একবার কোর ফাইলগুলো লোড হয়ে গেলে, বেশিরভাগ ফাংশন অফলাইনে কাজ করে। তবে এআই ব্যবহারের জন্য ইন্টারনেটের প্রয়োজন হতে পারে।" },
+      { q: "আমার ডেটা কি নিরাপদ?", a: "হ্যাঁ। যেহেতু সবকিছুই আপনার ব্রাউজারে চলে, তাই আপনার কোড বা ডেটা আমাদের সার্ভারে পৌঁছায় না।" }
     ],
-    detailsTitle: "¿Por qué elegir PyBrowser OS?",
-    details: [
-      "Privacidad: Todo se ejecuta localmente. Sus datos no se envían a servidores.",
-      "Entorno Instantáneo: Comience a codificar en segundos sin gestionar docker.",
-      "Multiplataforma: Funciona en Windows, Mac, Linux, y móviles.",
-      "Flujos de Trabajo Integrados: Código, archivos, imágenes e IA en uno solo."
+    roadmapTitle: "ডেভেলপমেন্ট রোডম্যাপ ২০২৬",
+    roadmap: [
+      { stage: "Q1", task: "মাল্টি-কার্নেল প্যারালাল এক্সিকিউশন এবং শেয়ারেড মেমরি সাপোর্ট।" },
+      { stage: "Q2", task: "WASM-এর মাধ্যমে লিগ্যাসি X11 অ্যাপ্লিকেশনের জন্য সম্পূর্ণ GUI সাপোর্ট।" },
+      { stage: "Q3", task: "ডেসেন্ট্রালাইজড ওয়ার্কস্পেস শেয়ারিং এবং কোলাবোরেটিভ সেশন।" },
+      { stage: "Q4", task: "অটোমেটিক স্ক্রিপ্ট জেনারেশনের জন্য পরবর্তী প্রজন্মের মাল্টিমোডাল এআই ইন্টিগ্রেশন।" }
     ],
-    footer: "© 2026 PyBrowser OS. Construido para ingenieros modernos."
-  },
-  fr: {
-    heroTitle: "Le terminal de navigateur de nouvelle génération",
-    heroSubtitle: "Système d'exploitation de terminal propulsé par WASM, prêt pour l'IA, entièrement basé sur le navigateur.",
-    launchBtn: "Lancer Terminal OS",
-    featuresTitle: "Fonctionnalités inégalées dans le navigateur",
-    features: [
-      { icon: 'cpu', title: "Architecture WASM", desc: "Exécutez Python, Rust, C directement. Aucun serveur requis." },
-      { icon: 'ai', title: "Outils d'IA intégrés", desc: "Apprentissage automatique et vision par ordinateur sur votre appareil." },
-      { icon: 'data', title: "Science des données", desc: "Analysez vos données sans installer de dépendances." }
-    ],
-    detailsTitle: "Pourquoi choisir PyBrowser OS ?",
-    details: [
-      "Confidentialité : tout s'exécute localement.",
-      "Environnement instantané : codez en quelques secondes.",
-      "Multiplateforme : fonctionne partout.",
-      "Flux intégrés : code, fichiers, images et IA en un seul endroit."
-    ],
-    footer: "© 2026 PyBrowser OS. Conçu pour les ingénieurs modernes."
-  },
-  de: {
-    heroTitle: "Das Browser-Terminal der nächsten Generation",
-    heroSubtitle: "WASM-betriebenes, KI-bereites, vollständig browserbasiertes Terminal-Betriebssystem.",
-    launchBtn: "Terminal OS Starten",
-    featuresTitle: "Beispiellose Funktionen im Browser",
-    features: [
-      { icon: 'cpu', title: "WASM-Architektur", desc: "Führen Sie Python, Rust, C direkt aus. Kein Server erforderlich." },
-      { icon: 'ai', title: "Eingebettete KI", desc: "Machine Learning und Computer Vision auf Ihrem Gerät." },
-      { icon: 'data', title: "Data Science", desc: "Analysieren Sie Daten ohne Abhängigkeitsinstallation." }
-    ],
-    detailsTitle: "Warum PyBrowser OS wählen?",
-    details: [
-      "Datenschutz: Alles läuft lokal.",
-      "Sofort-Umgebung: Programmieren in Sekunden.",
-      "Plattformübergreifend: Funktioniert überall.",
-      "Integrierte Workflows: Code, Dateien, Bilder, KI an einem Ort."
-    ],
-    footer: "© 2026 PyBrowser OS. Gebaut für moderne Ingenieure."
-  },
-  zh: {
-    heroTitle: "下一代浏览器终端",
-    heroSubtitle: "基于WASM、拥抱AI、完全基于浏览器的终端操作系统。",
-    launchBtn: "启动终端操作系统",
-    featuresTitle: "浏览器中无与伦比的功能",
-    features: [
-      { icon: 'cpu', title: "WASM 架构", desc: "直接运行 Python, Rust, C 等。无需服务器。" },
-      { icon: 'ai', title: "嵌入式AI工具", desc: "在本地设备上进行机器学习和计算机视觉操作。" },
-      { icon: 'data', title: "高级数据科学", desc: "分析数据集、生成图表，无需安装依赖项。" }
-    ],
-    detailsTitle: "为什么选择 PyBrowser OS？",
-    details: [
-      "隐私优先：一切都在本地运行。没有数据泄露风险。",
-      "即时环境：几秒钟内即可开始编写代码。",
-      "跨平台：支持多种设备和操作系统。",
-      "集成工作流：代码执行、文件管理、图像处理等尽在一个界面。"
-    ],
-    footer: "© 2026 PyBrowser OS. 为现代工程师而构建。"
-  },
-  ja: {
-    heroTitle: "次世代ブラウザターミナル",
-    heroSubtitle: "WASM搭載、AI対応の完全なブラウザベースのターミナルOS。",
-    launchBtn: "ターミナルOSを起動",
-    featuresTitle: "ブラウザ上で比類のない機能",
-    features: [
-      { icon: 'cpu', title: "WASM アーキテクチャ", desc: "Python, Rust, Cなどを直接実行。サーバーは不要です。" },
-      { icon: 'ai', title: "AIツール搭載", desc: "機械学習とコンピュータービジョンをローカルで。" },
-      { icon: 'data', title: "データサイエンス", desc: "依存関係のインストールなしでデータを分析。" }
-    ],
-    detailsTitle: "PyBrowser OSを選ぶ理由",
-    details: [
-      "プライバシー重視：すべてはローカルで実行されます。",
-      "即時環境：数秒でコーディングを開始できます。",
-      "クロスプラットフォーム：どこでも動作します。",
-      "統合ワークフロー：すべてが1つの場所に。"
-    ],
-    footer: "© 2026 PyBrowser OS. 現代のエンジニアのために。"
-  },
-  ar: {
-    heroTitle: "الجيل القادم من محطات المتصفح",
-    heroSubtitle: "نظام تشغيل محطة يعمل بالكامل في المتصفح ومدعوم بـ WASM ومجهز للذكاء الاصطناعي.",
-    launchBtn: "تشغيل نظام المحطة",
-    featuresTitle: "ميزات لا مثيل لها في المتصفح",
-    features: [
-      { icon: 'cpu', title: "بنية WASM", desc: "قم بتشغيل Python و Rust و C مباشرة في متصفحك. لا يوجد خادم مطلوب." },
-      { icon: 'ai', title: "أدوات ذكاء اصطناعي مدمجة", desc: "قدرات التعلم الآلي والرؤية الحاسوبية على جهازك المحلي." },
-      { icon: 'data', title: "علم بيانات متقدم", desc: "تحليل مجموعات البيانات دون تثبيت الاعتماديات." }
-    ],
-    detailsTitle: "لماذا تختار PyBrowser OS؟",
-    details: [
-      "الخصوصية أولاً: كل شيء يعمل محليًا.",
-      "بيئة فورية: ابدأ في كتابة الكود في ثوانٍ.",
-      "عبر منصات: يعمل على جميع الأجهزة.",
-      "تدفقات عمل متكاملة: تجميع الكود وإدارة الملفات في واجهة واحدة."
-    ],
-    footer: "© 2026 PyBrowser OS. مُصمم للمهندسين المستقبليين."
-  },
-  hi: {
-    heroTitle: "नेक्स्ट जनरेशन ब्राउज़र टर्मिनल",
-    heroSubtitle: "WASM-संचालित, AI-रेडी, पूरी तरह से ब्राउज़र-आधारित टर्मिनल OS।",
-    launchBtn: "टर्मिनल ओएस लॉन्च करें",
-    featuresTitle: "ब्राउज़र में अद्वितीय विशेषताएं",
-    features: [
-      { icon: 'cpu', title: "WASM आर्किटेक्चर", desc: "बिना सर्वर के पायथन, रस्ट आदि चलाएं।" },
-      { icon: 'ai', title: "अंतर्निहित AI टूल", desc: "आपके डिवाइस पर मशीन लर्निंग और विज़न।" },
-      { icon: 'data', title: "उन्नत डेटा विज्ञान", desc: "आसानी से डेटा का विश्लेषण करें।" }
-    ],
-    detailsTitle: "PyBrowser OS क्यों चुनें?",
-    details: [
-      "गोपनीयता: सब कुछ स्थानीय रूप से चलता है।",
-      "त्वरित वातावरण: सेकंड में कोडिंग शुरू करें।",
-      "क्रॉस-प्लेटफॉर्म: हर जगह काम करता है।",
-      "एकीकृत वर्कफ़्लो: सब कुछ एक जगह पर।"
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  ru: {
-    heroTitle: "Браузерный терминал следующего поколения",
-    heroSubtitle: "Терминальная ОС на базе WASM, готовая к ИИ, полностью в браузере.",
-    launchBtn: "Запустить Terminal OS",
-    featuresTitle: "Непревзойденные функции в браузере",
-    features: [
-      { icon: 'cpu', title: "Архитектура WASM", desc: "Запуск Python, Rust, C напрямую. Без серверов." },
-      { icon: 'ai', title: "Встроенный ИИ", desc: "Машинное обучение на вашем устройстве." },
-      { icon: 'data', title: "Data Science", desc: "Анализ данных без зависимостей." }
-    ],
-    detailsTitle: "Почему PyBrowser OS?",
-    details: [
-      "Приватность: все работает локально.",
-      "Мгновенная среда: программируйте за секунды.",
-      "Кроссплатформенность: работает везде.",
-      "Интегрированные процессы: код, файлы и ИИ в одном."
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  pt: {
-    heroTitle: "O Terminal de Navegador da Próxima Geração",
-    heroSubtitle: "SO de terminal baseado em navegador, alimentado por WASM e pronto para IA.",
-    launchBtn: "Iniciar Terminal OS",
-    featuresTitle: "Recursos Incomparáveis no Navegador",
-    features: [
-      { icon: 'cpu', title: "Arquitetura WASM", desc: "Execute Python, Rust, C diretamente. Sem necessidade de servidor." },
-      { icon: 'ai', title: "Ferramentas de IA", desc: "Aprendizado de máquina no seu dispositivo local." },
-      { icon: 'data', title: "Ciência de Dados", desc: "Analise dados sem instalações." }
-    ],
-    detailsTitle: "Por que escolher o PyBrowser OS?",
-    details: [
-      "Privacidade: tudo roda localmente.",
-      "Ambiente instantâneo: codifique em segundos.",
-      "Multiplataforma: roda em qualquer lugar.",
-      "Fluxos de trabalho integrados: código e IA juntos."
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  it: {
-    heroTitle: "Il Terminale Browser di Nuova Generazione",
-    heroSubtitle: "Sistema operativo per terminale basato su WASM, pronto per IA, nel browser.",
-    launchBtn: "Avvia Terminal OS",
-    featuresTitle: "Funzionalità senza precedenti nel browser",
-    features: [
-      { icon: 'cpu', title: "Architettura WASM", desc: "Esegui Python, Rust, C direttamente. Nessun server necessario." },
-      { icon: 'ai', title: "Strumenti IA integrati", desc: "Machine learning sul tuo dispositivo." },
-      { icon: 'data', title: "Scienza dei dati", desc: "Analizza i dati senza installazioni." }
-    ],
-    detailsTitle: "Perché scegliere PyBrowser OS?",
-    details: [
-      "Privacy: tutto viene eseguito localmente.",
-      "Ambiente istantaneo: scrivi codice in pochi secondi.",
-      "Multipiattaforma: funziona ovunque.",
-      "Flussi di lavoro integrati: tutto in uno."
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  ko: {
-    heroTitle: "차세대 브라우저 터미널",
-    heroSubtitle: "WASM 기반, AI 지원, 완벽한 브라우저 기반 터미널 OS.",
-    launchBtn: "Terminal OS 실행",
-    featuresTitle: "브라우저 최고의 기능",
-    features: [
-      { icon: 'cpu', title: "WASM 아키텍처", desc: "서버 없이 Python 등 실행." },
-      { icon: 'ai', title: "AI 도구 내장", desc: "디바이스에서 기계 학습." },
-      { icon: 'data', title: "데이터 과학", desc: "설치 없이 데이터 분석." }
-    ],
-    detailsTitle: "PyBrowser OS를 선택하는 이유",
-    details: [
-      "개인 정보 보호: 모든 것이 로컬에서 실행.",
-      "즉각적인 환경: 몇 초 만에 코딩 시작.",
-      "크로스 플랫폼: 어디서나 작동.",
-      "통합 워크플로우: 코드, 파일, AI 모두 하나로."
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  tr: {
-    heroTitle: "Yeni Nesil Tarayıcı Terminali",
-    heroSubtitle: "WASM destekli, yapay zeka hazır, tamamen tarayıcı tabanlı terminal işletim sistemi.",
-    launchBtn: "Terminal OS'i Başlat",
-    featuresTitle: "Tarayıcıda Eşsiz Özellikler",
-    features: [
-      { icon: 'cpu', title: "WASM Mimarisi", desc: "Python, Rust, C'yi doğrudan çalıştırın. Sunucu gerekmez." },
-      { icon: 'ai', title: "Gömülü Yapay Zeka", desc: "Cihazınızda makine öğrenimi." },
-      { icon: 'data', title: "Veri Bilimi", desc: "Bağımlılık kurmadan veri analizi." }
-    ],
-    detailsTitle: "Neden PyBrowser OS?",
-    details: [
-      "Gizlilik: Her şey yerel çalışır.",
-      "Anında Ortam: Saniyeler içinde kod yazın.",
-      "Çapraz Platform: Her yerde çalışır.",
-      "Entegre İş Akışı: Kod ve yapay zeka bir arada."
-    ],
-    footer: "© 2026 PyBrowser OS."
-  },
-  nl: {
-    heroTitle: "De Browser Terminal van de Volgende Generatie",
-    heroSubtitle: "WASM-aangedreven, AI-ready, volledig browser-gebaseerd terminal OS.",
-    launchBtn: "Start Terminal OS",
-    featuresTitle: "Ongekende Functies in de Browser",
-    features: [
-      { icon: 'cpu', title: "WASM Architectuur", desc: "Draai Python, Rust direct. Geen server nodig." },
-      { icon: 'ai', title: "Ingebouwde AI", desc: "Machine Learning op uw apparaat." },
-      { icon: 'data', title: "Data Science", desc: "Analyseer data zonder installaties." }
-    ],
-    detailsTitle: "Waarom PyBrowser OS?",
-    details: [
-      "Privacy: Alles draait lokaal.",
-      "Directe omgeving: Codeer in seconden.",
-      "Cross-platform: Werkt overal.",
-      "Geïntegreerde workflows: Alles op één plek."
-    ],
-    footer: "© 2026 PyBrowser OS."
+    footer: "© ২০২৬ টার্মিনাল ওএস। আধুনিক ইঞ্জিনিয়ারদের জন্য তৈরি।"
   }
 };
 
 const getIcon = (name: string) => {
   switch (name) {
-    case 'cpu': return <Cpu className="w-8 h-8 md:w-12 md:h-12 text-emerald-400" />;
-    case 'ai': return <Zap className="w-8 h-8 md:w-12 md:h-12 text-purple-400" />;
-    case 'data': return <Database className="w-8 h-8 md:w-12 md:h-12 text-blue-400" />;
-    default: return <Code className="w-8 h-8 md:w-12 md:h-12 text-emerald-400" />;
+    case 'cpu': return <Cpu className="w-8 h-8 text-emerald-400" />;
+    case 'ai': return <Zap className="w-8 h-8 text-purple-400" />;
+    case 'data': return <Database className="w-8 h-8 text-blue-400" />;
+    default: return <Code className="w-8 h-8 text-emerald-400" />;
   }
 };
 
@@ -371,17 +141,18 @@ export default function LandingPage() {
   const content = translations[currentLangCode] || translations['en'];
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-neutral-950 text-white font-sans overflow-x-hidden selection:bg-emerald-500/30">
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-neutral-950/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
               <Terminal className="w-6 h-6 text-emerald-400" />
-              <span className="font-mono font-bold text-lg tracking-wider text-emerald-50">PyBrowser OS</span>
+              <span className="font-mono font-bold text-lg tracking-wider text-emerald-50">Terminal OS</span>
             </div>
             
             <div className="flex items-center gap-4">
+              {/* Kernels Dropdown */}
               <div className="relative" ref={kernelsRef}>
                 <button 
                   onClick={() => { setIsKernelsOpen(!isKernelsOpen); setIsLangOpen(false); }}
@@ -390,22 +161,23 @@ export default function LandingPage() {
                   <Code className="w-4 h-4" />
                   <span>Kernels</span>
                 </button>
-                <div className={`absolute left-0 mt-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl transition-all duration-200 z-[60] ${isKernelsOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                  <div className="py-2 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className={`absolute right-0 md:left-0 mt-2 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl transition-all duration-200 z-[60] ${isKernelsOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}>
+                  <div className="py-2 max-h-80 overflow-y-auto custom-scrollbar">
                     {Object.entries(KERNELS).map(([key, k]) => (
                       <Link 
                         key={key}
                         to={`/kernel/${key}?lang=${currentLangCode}`}
-                        className="block px-4 py-2 text-sm text-neutral-300 hover:bg-white/5 hover:text-white"
+                        className="block px-4 py-2.5 text-sm text-neutral-300 hover:bg-white/5 hover:text-emerald-400 capitalize transition-colors"
                         onClick={() => setIsKernelsOpen(false)}
                       >
-                        {k.title}
+                        {key === 'terminalos' ? '⭐ Terminal OS' : k.title}
                       </Link>
                     ))}
                   </div>
                 </div>
               </div>
 
+              {/* Language Selector */}
               <div className="relative" ref={langRef}>
                 <button 
                   onClick={() => { setIsLangOpen(!isLangOpen); setIsKernelsOpen(false); }}
@@ -414,45 +186,52 @@ export default function LandingPage() {
                   <Globe className="w-4 h-4" />
                   <span className="uppercase">{currentLangCode}</span>
                 </button>
-                <div className={`absolute right-0 mt-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl transition-all duration-200 z-[60] ${isLangOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                  <div className="py-2 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className={`absolute right-0 mt-2 w-40 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl transition-all duration-200 z-[60] ${isLangOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}>
+                  <div className="py-2">
                     {languages.map(l => (
                       <Link 
                         key={l.code}
                         to={`/${l.code}`}
-                        className={`block px-4 py-2 text-sm ${l.code === currentLangCode ? 'bg-emerald-500/10 text-emerald-400' : 'text-neutral-300 hover:bg-white/5 hover:text-white'}`}
+                        className={`block px-4 py-2 text-sm ${l.code === currentLangCode ? 'text-emerald-400 bg-emerald-500/5' : 'text-neutral-300 hover:bg-white/5'}`}
                         onClick={() => setIsLangOpen(false)}
                       >
-                        <span className="font-bold mr-2">{l.native}</span>
-                        <span className="text-neutral-500 text-xs">({l.name})</span>
+                        {l.native}
                       </Link>
                     ))}
                   </div>
                 </div>
               </div>
+
               <button 
                 onClick={() => navigate('/terminal')}
-                className="hidden md:flex items-center gap-2 px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm rounded-full transition-all"
+                className="hidden md:block px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm rounded-full transition-all"
               >
-                {content.launchBtn} <ArrowRight className="w-4 h-4" />
+                {content.launchBtn}
               </button>
             </div>
           </div>
         </div>
       </nav>
+
       {/* Hero Section */}
-      <div className="relative pt-32 pb-20 sm:pt-40 sm:pb-24 lg:pb-32 overflow-hidden">
-        {/* Abstract Background */}
+      <section className="relative pt-40 pb-20 lg:pt-56 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-[100px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px]" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-400 text-xs font-mono mb-8"
+          >
+            <Activity className="w-3 h-3" />
+            V2.0.4 PRODUCTION STABLE
+          </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6"
+            className="text-5xl md:text-8xl font-black tracking-tight text-white mb-8"
           >
             {content.heroTitle}
           </motion.h1>
@@ -460,7 +239,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mt-4 max-w-3xl mx-auto text-xl text-neutral-400"
+            className="max-w-3xl mx-auto text-xl md:text-2xl text-neutral-400 leading-relaxed"
           >
             {content.heroSubtitle}
           </motion.p>
@@ -468,82 +247,136 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-10 flex justify-center gap-4"
+            className="mt-12 flex justify-center gap-4"
           >
             <button 
               onClick={() => navigate('/terminal')}
-              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-full transition-all flex items-center gap-2 text-lg shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.5)] hover:-translate-y-1"
+              className="px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl transition-all flex items-center gap-3 text-lg shadow-[0_20px_50px_rgba(16,185,129,0.3)] hover:-translate-y-1"
             >
-              <Terminal className="w-5 h-5" />
+              <Terminal className="w-6 h-6" />
               {content.launchBtn}
             </button>
           </motion.div>
         </div>
-      </div>
-      {/* Features Showcase */}
-      <div className="py-20 bg-neutral-900/50 border-y border-white/5 relative z-10">
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-24 bg-neutral-900/50 border-y border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-white">{content.featuresTitle}</h2>
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-bold text-white mb-4">{content.featuresTitle}</h2>
+            <p className="text-neutral-500">Advanced computational capabilities delivered through WebAssembly.</p>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {content.features.map((feature: any, index: number) => (
+            {content.features.map((f: any, i: number) => (
               <motion.div 
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-neutral-900 border border-white/10 rounded-2xl p-8 hover:border-emerald-500/30 transition-colors group"
+                key={i}
+                whileHover={{ y: -5 }}
+                className="bg-neutral-900 border border-white/5 p-10 rounded-3xl group hover:border-emerald-500/30 transition-all"
               >
-                <div className="w-16 h-16 bg-neutral-950 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-white/5">
-                  {getIcon(feature.icon)}
+                <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-8 border border-white/5 group-hover:bg-emerald-500/10 transition-colors">
+                  {getIcon(f.icon)}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  {feature.desc}
-                </p>
+                <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
+                <p className="text-neutral-400 leading-relaxed text-lg">{f.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
-      </div>
-      {/* Deep Dive / Details */}
-      <div className="py-24 relative z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-br from-emerald-900/20 to-neutral-900 border border-emerald-500/20 rounded-3xl p-10 md:p-16"
-          >
-            <div className="flex items-center gap-4 mb-8">
-              <ShieldCheck className="w-10 h-10 text-emerald-400" />
-              <h2 className="text-3xl font-bold text-white">{content.detailsTitle}</h2>
+      </section>
+
+      {/* Kernels Showcase */}
+      <section className="py-24 bg-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-16 gap-6 text-center md:text-left">
+            <div>
+              <h2 className="text-4xl font-bold text-white mb-4">Supported Programming Kernels</h2>
+              <p className="text-lg text-neutral-400">16+ Language runtimes optimized for browser execution.</p>
             </div>
-            
-            <ul className="space-y-6">
-              {content.details.map((detail: string, index: number) => (
-                <li key={index} className="flex gap-4 items-start">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-1">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  </div>
-                  <p className="text-lg text-neutral-300 leading-relaxed w-full">
-                    <span className="font-bold text-emerald-50">{detail.split(':')[0]}:</span>
-                    {detail.substring(detail.indexOf(':') + 1)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+            <Link to="/terminal" className="text-emerald-400 font-bold hover:underline flex items-center gap-2 justify-center">
+              Explore All <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+            {Object.entries(KERNELS).map(([key, k], i) => (
+              <Link key={key} to={`/kernel/${key}?lang=${currentLangCode}`}>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
+                  className="aspect-square bg-neutral-900 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-neutral-400 hover:text-white group"
+                >
+                  <Code className="w-6 h-6 opacity-40 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-xs font-bold uppercase tracking-widest">{key}</span>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Roadmap & FAQ Split */}
+      <section className="py-24 bg-neutral-950 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24">
+            {/* Roadmap */}
+            <div>
+              <h2 className="text-3xl font-black text-white mb-12 flex items-center gap-3">
+                <Layers className="w-8 h-8 text-emerald-500" />
+                {content.roadmapTitle}
+              </h2>
+              <div className="space-y-10">
+                {content.roadmap.map((item: any, i: number) => (
+                  <div key={i} className="flex gap-8 relative group">
+                    {i !== content.roadmap.length - 1 && <div className="absolute left-6 top-12 bottom-[-40px] w-[2px] bg-white/5" />}
+                    <div className="w-12 h-12 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center shrink-0 font-black text-emerald-400 z-10 group-hover:border-emerald-500 transition-colors">
+                      {item.stage}
+                    </div>
+                    <div className="pt-2">
+                       <p className="text-xl text-neutral-200 leading-tight font-medium">{item.task}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* FAQ */}
+            <div>
+              <h2 className="text-3xl font-black text-white mb-12 flex items-center gap-3">
+                <Info className="w-8 h-8 text-emerald-500" />
+                {content.faqTitle}
+              </h2>
+              <div className="space-y-6">
+                {content.faq.map((item: any, i: number) => (
+                  <div key={i} className="bg-neutral-900/30 border border-white/5 rounded-3xl p-8 hover:bg-neutral-900/50 transition-colors">
+                    <h3 className="text-xl font-bold text-emerald-50 mb-4 tracking-tight">Q: {item.q}</h3>
+                    <p className="text-neutral-400 text-lg leading-relaxed">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="border-t border-white/5 py-12 relative z-10 bg-neutral-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-          <Terminal className="w-8 h-8 text-neutral-600 mb-4" />
-          <p className="text-neutral-500">{content.footer}</p>
+      <footer className="py-24 bg-black border-t border-white/5 text-center px-4">
+        <div className="max-w-4xl mx-auto">
+          <Terminal className="w-12 h-12 text-neutral-800 mx-auto mb-8" />
+          <p className="text-neutral-500 text-lg mb-12 leading-relaxed">
+            Designed for the next generation of cloud-native engineering. 
+            Terminal OS is a product of intensive research into browser performance and sandboxed environment security.
+          </p>
+          <div className="flex flex-wrap justify-center gap-8 text-sm font-bold text-neutral-600 uppercase tracking-widest">
+            <span>Terminal OS v2.0</span>
+            <span>WASM Runtime</span>
+            <span>AI Integrated</span>
+            <span>POSIX Compliant</span>
+          </div>
+          <p className="mt-12 text-neutral-700 text-xs">
+            {content.footer}
+          </p>
         </div>
       </footer>
       
