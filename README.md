@@ -481,18 +481,3 @@ For the latest updates, contributions, and to explore the codebase, visit the of
 Terminal OS (PyBrowser) is released under the **MIT License**. This open-source license allows for broad use, modification, and distribution, encouraging community collaboration.
 
 Terminal OS v2.0.4 - Built for modern engineers.
-
-## References
-
-[1] WebAssembly. (n.d.). *WebAssembly*. Retrieved from https://webassembly.org/
-[2] MDN Web Docs. (n.d.). *SharedArrayBuffer*. Retrieved from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
-[3] Google AI. (n.d.). *Gemini API*. Retrieved from https://ai.google.dev/models/gemini
-[4] React. (n.d.). *React – A JavaScript library for building user interfaces*. Retrieved from https://react.dev/
-[5] Vite. (n.d.). *Vite | Next Generation Frontend Tooling*. Retrieved from https://vitejs.dev/
-[6] TypeScript. (n.d.). *TypeScript - JavaScript With Syntax For Types*. Retrieved from https://www.typescriptlang.org/
-[7] Tailwind CSS. (n.d.). *Tailwind CSS - A utility-first CSS framework for rapidly building custom designs*. Retrieved from https://tailwindcss.com/
-[8] Framer. (n.d.). *Framer Motion*. Retrieved from https://www.framer.com/motion/
-[9] Prism. (n.d.). *Prism - Lightweight, extensible syntax highlighter*. Retrieved from https://prismjs.com/
-[10] Express. (n.d.). *Express - Node.js web application framework*. Retrieved from https://expressjs.com/
-[11] Pyodide. (n.d.). *Pyodide*. Retrieved from https://pyodide.org/
-[12] IndexedDB API. (n.d.). *MDN Web Docs*. Retrieved from https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
