@@ -1,51 +1,98 @@
-# Cortex Operating System v4.0 (Enterprise Edition)
+# Terminal OS - নেক্সট জেনারেশন ব্রাউজার টার্মিনাল
 
-Welcome to **Cortex OS**, a high-performance, browser-based development and hacking environment built on a robust full-stack architecture. Cortex OS provides a seamless experience for developing, testing, and deploying web applications and tools directly from your browser.
+Terminal OS হলো একটি শক্তিশালী, ব্রাউজার-ভিত্তিক টার্মিনাল অপারেটিং সিস্টেম—যা মূলত **PyBrowser** প্রকল্প হিসেবে GitHub-এ হোস্ট করা। এটি WebAssembly (WASM), SharedArrayBuffer, এবং நவீன ব্রাউজার API-এর সমন্বয়ে তৈরি, যা ডেভেলপার, ডেটা সায়েন্টিস্ট এবং ইঞ্জিনিয়ারদের জন্য একটি অত্যন্ত নিরাপদ, দ্রুত এবং বহনযোগ্য উন্নয়ন পরিবেশ প্রদান করে। 
 
-## 🚀 Core Features
-
-### 1. **Live Deployment Hub (Real Subdomain Routing)**
-The standout feature of Cortex OS is the **Web Gateway Hub**. Unlike standard IDEs that only offer static previews, Cortex allows you to "deploy" your files to real, addressable endpoints.
-- **Real Backend Integration:** Powered by an Express.js server, it dynamically registers routes.
-- **Instant Deployment:** Use the `deploy [filename] [subdomain]` command to map any HTML/CSS/JSON file to a unique URL.
-- **Integrated Browser:** View your live deployments inside the OS without leaving the workspace.
-
-### 2. **Universal Execution Hub**
-The `run` command is the heart of the system.
-- **Python Support:** Execute Python scripts (`.py`) in-browser using Pyodide.
-- **Universal Run:** The "Run Code" button in the editor dynamically handles different file types, providing console output directly in your history log.
-
-### 3. **Advanced Security Vault**
-A dedicated **Offline Security** module allows you to stage files for secure archiving.
-- **AES-Zip Concepts:** Prepare assets for secure, encrypted storage.
-- **Archiving Logic:** Features a drag-and-drop interface for staging assets before final processing.
-
-### 4. **Modern Developer Suite**
-- **Full-Stack Filesystem:** A sidebar that supports folders, nested files, and real-time state synchronization.
-- **Multi-View Sidebar:** Toggle between File Explorer, Network Gateway, AI Automation, and Pocket ML views.
-- **Hybrid Terminal:** A command-line interface that bridges the gap between simulated OS commands and real API calls.
-
-## 🛠 Command Reference
-
-| Command | Usage | Description |
-| :--- | :--- | :--- |
-| `run` | `run [file]` | Executes the specified file. |
-| `deploy` | `deploy [file] [name]` | Deploys a file to `[origin]/v-host/[name]`. |
-| `kill` | `kill [PID]` | Terminates a running process or deployment. |
-| `ls` | `ls` | Lists files in the current directory. |
-| `status` | `status` | Shows system resource usage and active nodes. |
-| `traffic-log` | `traffic-log` | Activates global traffic monitoring. |
-
-## 🏗 Technology Stack
-
-- **Frontend:** React 18, Vite, Tailwind CSS, Lucide Icons.
-- **Backend:** Express.js (Real-time gateway registry).
-- **Runtime:** Node.js (v4.0.0+ Compatibility).
-- **Core Engine:** TSX (TypeScript Execute) for server-side reliability.
-- **Animations:** Framer Motion (motion/react).
-
-## 🔒 Security Notice
-Cortex OS is designed for development and sandbox testing. While it provides "Edge Node" simulation and "Subdomain Routing", all operations are contained within the provisioned environment for safety.
+কোনো জটিল লোকাল ইনস্টলেশন বা এনভায়রনমেন্ট কনফিগারেশন ছাড়াই আপনি সরাসরি আপনার ব্রাউজার থেকে পাইথন, সি, রাস্ট, জাভাস্ক্রিপ্ট এবং আরও ১৬+ ল্যাঙ্গুয়েজ রান করতে পারবেন।
 
 ---
-*Built with ❤️ for developers who need more than just a code editor.*
+
+## 🚀 কেন Terminal OS বেছে নেবেন? (The Value Proposition)
+
+আধুনিক ডেভেলপমেন্ট এনভায়রনমেন্টের জটিলতা কাটাতে Terminal OS একটি গেম-চেঞ্জার সমাধান।
+
+*   **Privacy First (নিরাপত্তা):** আপনার কোড বা ডেটা লোকালি এক্সিকিউট হয়। এটি কোনোভাবেই আপনার কম্পিউটার থেকে আমাদের সার্ভারে যায় না (যদি না আপনি explicitly क्लाउड-sync ফিচার ব্যবহার করেন)।
+*   **WASM-পাওয়ার্ড পারফরম্যান্স:** প্রথাগত ইমুলেটরের বিপরীতে WebAssembly ব্যবহার করার ফলে এটি প্রায় নেটিভ পারফরম্যান্স প্রদান করে।
+*   **মাল্টি-কার্নেল সাপোর্ট:** এটি একসাথে ১৫+ আলাদা প্রোগ্রামিং কার্নেল সাপোর্ট করে। অর্থাৎ, আপনি এক탭-এ Python রান করছেন, অন্য ট্যাবে Rust কম্পাইল করছেন, আর ব্যাকগ্রাউন্ডে C-তে সিস্টেম লেভেল কাজ করছেন।
+*   **ইনস্ট্যান্ট এনভায়রনমেন্ট:** Docker বা জটিল ভার্চুয়াল এনভায়রনমেন্টের ঝামেলা নেই। আপনি শুধু ব্রাউজার ওপেন করেই কয়েক সেকেন্ডে কোডিং শুরু করতে পারছেন।
+
+---
+
+## 🛠️ প্রযুক্তিগত আর্কিটেকচার (Technical Deep Dive)
+
+Terminal OS কোনো সাধারণ রানটাইম এনভায়রনমেন্ট নয়, এটি একটি মাইক্রোকের্নেল ভিত্তিক OS।
+
+1.  **Aether Microkernel:** এটি সিস্টেমের প্রাণ। এটি WASM রানটাইমগুলোকে শেডিউল করে, মেমরি ম্যানেজ করে এবং ইন্টার-কার্নেল কমিউনিকেশন পরিচালনা করে।
+2.  **Virtual File System (VFS):** আমরা IndexedDB ব্যবহার করি। এর ফলে আপনি ব্রাউজার রিলোড দিলেও আপনার ফাইলগুলো পারসিস্টেন্ট বা স্থায়ী থাকে।
+3.  **Socket Proxy:** ব্রাউজারে Raw TCP/IP সকেট সাপোর্ট না থাকায়, আমরা একটি Specialized WebSocket Proxy ব্যবহার করি, যা আপনার CLI টুলগুলোকে সকেট কানেকশন পেতে সহায়তা করে।
+4.  **UI/UX:** পুরো ইন্টারফেস React এবং Framer Motion দ্বারা তৈরি, যা হাই-পারফরম্যান্স ৬৩FPS অ্যানিমেশন প্রদান করে।
+
+---
+
+## ⌨️ অপরিহার্য শেল কমান্ডসমূহ (Command Reference)
+
+আমাদের CLI বা টার্মিনাল ব্যবহার করতে নিচের কমান্ডগুলো শিখুন:
+
+| কমান্ড | বিবরণ |
+| :--- | :--- |
+| `py-run <script.py>` | পাইথন স্ক্রিপ্ট সরাসরি রান করুন। |
+| `wasm-compile <file.zig>` | কার্নেল বাইনারি তৈরি করুন। |
+| `ai-generate --query "..."` | ইনবিল্ট AI এসিস্ট্যান্ট থেকে কোড সমাধান নিন। |
+| `vfs-mount --persist` | পারসিস্টেন্ট ফাইল সিস্টেম মাউন্ট করুন। |
+| `kernel-switch <name>` | অন্য কোনো ল্যাঙ্গুয়েজ কার্নেলে সুইচ করুন। |
+| `net-status` | কারেন্ট সকেট কানেকশনের অবস্থা দেখুন। |
+| `fs-tree` | আপনার ভার্চুয়াল ডিরেক্টরি স্ট্রাকচার লিস্ট করুন। |
+
+*(বিস্তারিত কমান্ডের জন্য `help` কমান্ডটি টাইপ করুন)*
+
+---
+
+## 🌐 ভাষা ও কার্নেল সাপোর্ট (Supported Kernels)
+
+আমরা বর্তমানে ১৬+ কার্নেল সাপোর্ট করছি:
+- **Data Science:** Python 3.11, R, Julia
+- **Systems:** C, C++, Rust, Zig
+- **Web:** JavaScript (Node.js style), TypeScript
+- **Enterprise/Cloud:** Golang, C#, PHP
+- **Others:** Ruby, Kotlin, Dart, Swift, SQL
+
+---
+
+## 🗺️ রোডম্যাপ ২০২৬ (Development Roadmap)
+
+আমরা প্রতিনিয়ত এটি উন্নতির চেষ্টা করছি:
+
+- **Q1 (Completed):** মাল্টি-কার্নেল প্যারালাল এক্সিকিউশন ও শেয়ারড মেমরি বাফার।
+- **Q2 (In-Progress):** লিগ্যাসি এক্স-উইন্ডো (X11) অ্যাপ্লিকেশনের জন্য পূর্ণাঙ্গ GUI সাপোর্ট চালু।
+- **Q3 (Planned):** ডেসেন্ট্রালাইজড ওয়ার্কস্পেস শেয়ারিং ও রিয়েল-টাইম কোল্যাবোরেটিভ সেশন।
+- **Q4 (Planned):** অটোমেটিক স্ক্রিপ্ট জেনারেশন ও ডিবাগিংয়ের জন্য পরবর্তী প্রজন্মের মাল্টিমোডাল এআই ইন্টিগ্রেশন।
+
+---
+
+## 💻 ডেভেলপমেন্ট গাইড (Setup & Contribution)
+
+আপনি যদি এই প্রজেক্টে ডেভেলপার হিসেবে যুক্ত হতে চান:
+
+### কিভাবে শুরু করবেন (Build & Run):
+```bash
+# ১. ডিপেনডেন্সি ইনস্টল করুন
+npm install
+
+# ২. টাইপস্ক্রিপ্ট ও লিন্টার চেক করুন
+npm run lint
+
+# ৩. ডেভেলপমেন্ট সার্ভার চালু করুন (port 3000)
+npm run dev
+```
+
+### GitHub রিপোজিটরি:
+সবাইকে অবদান রাখার জন্য স্বাগত জানাই:
+[GitHub Repository - Quincunx33/PyBrowser](https://github.com/Quincunx33/PyBrowser)
+
+---
+
+## ⚖️ লাইসেন্স ও আইনি তথ্যাদি
+
+Terminal OS সম্পূর্ণ ওপেন সোর্স। এটি MIT License-এর অধীনে প্রকাশিত। আপনি এটি ব্যক্তিগত বা যেকোনো বাণিজ্যিক কাজে ব্যবহার করতে পারেন। কোনো সমস্যায় পড়লে ইস্যু রিপোর্ট করুন।
+
+---
+*(Terminal OS v2.0.4 - Built for modern engineers.)*
