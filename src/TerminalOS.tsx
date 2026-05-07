@@ -951,6 +951,23 @@ except:
       }
       if (type === 'CREATE_FILE') { createFile(payload.name); }
       if (type === 'DELETE_FILE') { deletePath(payload.path); }
+      if (type === 'READ_FILE') {
+        try {
+          const content = pyodide?.FS.readFile(payload.path, { encoding: 'utf8' });
+          channelRef.current?.postMessage({ type: 'FILE_CONTENT', payload: { path: payload.path, content } });
+        } catch (err) {
+          console.error('Failed to read file for SM:', err);
+        }
+      }
+      if (type === 'WRITE_FILE') {
+        try {
+          pyodide?.FS.writeFile(payload.path, payload.content);
+          refreshFiles();
+          persistFS();
+        } catch (err) {
+          console.error('Failed to write file from SM:', err);
+        }
+      }
     };
   }, [pyodide, files, createFile, deletePath]);
 
@@ -2843,7 +2860,7 @@ ans, img
                         <p className="text-[9px] text-neutral-600 font-medium uppercase tracking-tighter">{t('mountedIn')}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => window.open('/standalone-file-manager', '_blank')} title="Open in New Tab" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><ExternalLink className="w-4 h-4"/></button>
+                        <button onClick={() => window.open(`${import.meta.env.BASE_URL}#/standalone-file-manager`, '_blank')} title="Open in New Tab" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><ExternalLink className="w-4 h-4"/></button>
                         <button onClick={() => { setCreatingType('file'); setNewName(''); }} title="New File" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Plus className="w-4 h-4" /></button>
                         <button onClick={() => { setCreatingType('folder'); setNewName(''); }} title="New Folder" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><FolderPlus className="w-4 h-4" /></button>
                         <button onClick={() => fileInputRef.current?.click()} title="Upload" className="p-2 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Upload className="w-4 h-4" /></button>

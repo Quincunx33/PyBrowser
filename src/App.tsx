@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import TerminalOS from './TerminalOS';
 import Python from './kernels/Python';
@@ -21,7 +21,7 @@ import StandaloneFileManager from './StandaloneFileManager';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/:lang" element={<LandingPage />} />
@@ -44,6 +44,6 @@ export default function App() {
         <Route path="/kernel/sql" element={<SQL />} />
         <Route path="/standalone-file-manager" element={<StandaloneFileManager />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
